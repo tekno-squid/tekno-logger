@@ -100,6 +100,18 @@ export const appConfig = {
     version: config.SERVICE_VERSION,
     logLevel: config.LOG_LEVEL,
   },
+
+  // Server configuration
+  server: {
+    port: config.PORT,
+    host: '0.0.0.0', // Bind to all interfaces for Render
+    publicUrl: process.env.PUBLIC_URL || `http://localhost:${config.PORT}`,
+  },
+
+  // Path configuration
+  paths: {
+    publicDir: process.env.PUBLIC_DIR || 'public',
+  },
   
   // External services
   external: {
