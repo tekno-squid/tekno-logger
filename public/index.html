@@ -1,25 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tekno Logger - Dashboard</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>📋 Tekno Logger</h1>
             <p>Minimal overflow logging service</p>
         </header>
-        
+
         <nav class="tabs">
             <button class="tab-button active" data-tab="dashboard">Dashboard</button>
             <button class="tab-button" data-tab="search">Search</button>
             <button class="tab-button" data-tab="alerts">Alerts</button>
             <button class="tab-button" data-tab="projects">Projects</button>
         </nav>
-        
+
         <main>
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
@@ -42,7 +44,7 @@
                     <div id="recent-errors-list">Loading...</div>
                 </div>
             </div>
-            
+
             <!-- Search Tab -->
             <div id="search" class="tab-content">
                 <div class="search-form">
@@ -65,7 +67,7 @@
                     <p>Enter search criteria above</p>
                 </div>
             </div>
-            
+
             <!-- Alerts Tab -->
             <div id="alerts" class="tab-content">
                 <div class="alert-settings">
@@ -95,7 +97,7 @@
                     </form>
                 </div>
             </div>
-            
+
             <!-- Projects Tab -->
             <div id="projects" class="tab-content">
                 <div class="project-management">
@@ -106,7 +108,8 @@
             </div>
         </main>
     </div>
-    
+
     <script src="/js/app.js"></script>
 </body>
+
 </html>

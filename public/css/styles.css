@@ -36,7 +36,7 @@ header p {
     display: flex;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
     overflow: hidden;
 }
@@ -65,7 +65,7 @@ header p {
     background: white;
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .tab-content.active {
@@ -264,11 +264,11 @@ button[type="submit"]:hover,
     .tabs {
         flex-direction: column;
     }
-    
+
     .form-row {
         flex-direction: column;
     }
-    
+
     .stats-grid {
         grid-template-columns: 1fr;
     }
