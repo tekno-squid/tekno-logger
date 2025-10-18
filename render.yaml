@@ -1,0 +1,50 @@
+﻿# Render Service Configuration
+services:
+  - type: web
+    name: tekno-logger
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromDatabase:
+          name: tekno-logger-db
+          property: host
+      - key: DB_NAME
+        fromDatabase:
+          name: tekno-logger-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: tekno-logger-db
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: tekno-logger-db
+          property: password
+      - key: HMAC_SECRET
+        generateValue: true
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: DEFAULT_RETENTION_DAYS
+        value: 3
+      - key: MAX_PAYLOAD_BYTES
+        value: 524288
+      - key: MAX_EVENTS_PER_POST
+        value: 250
+
+# Note: If using external MySQL (DreamHost), remove the database section
+# and manually configure the DB_* environment variables
+databases:
+  - name: tekno-logger-db
+    databaseName: tekno_logger
+    user: logger_user
+    region: oregon
+    plan: free

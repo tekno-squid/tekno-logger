@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tekno Logger - Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Tekno Logger</h1>
+            <p>Minimal overflow logging service</p>
+        </header>
+        
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-button" data-tab="search">Search</button>
+            <button class="tab-button" data-tab="alerts">Alerts</button>
+            <button class="tab-button" data-tab="projects">Projects</button>
+        </nav>
+        
+        <main>
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Error Rate (1h)</h3>
+                        <div class="stat-value" id="error-rate">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Events (1h)</h3>
+                        <div class="stat-value" id="total-events">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Top Fingerprint</h3>
+                        <div class="stat-value" id="top-fingerprint">--</div>
+                    </div>
+                </div>
+                <div class="recent-errors">
+                    <h3>Recent Errors</h3>
+                    <div id="recent-errors-list">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Search Tab -->
+            <div id="search" class="tab-content">
+                <div class="search-form">
+                    <div class="form-row">
+                        <select id="search-project">
+                            <option value="">All Projects</option>
+                        </select>
+                        <select id="search-level">
+                            <option value="">All Levels</option>
+                            <option value="error">Error</option>
+                            <option value="warn">Warning</option>
+                            <option value="info">Info</option>
+                            <option value="debug">Debug</option>
+                        </select>
+                        <input type="text" id="search-query" placeholder="Search message...">
+                        <button id="search-btn">Search</button>
+                    </div>
+                </div>
+                <div id="search-results">
+                    <p>Enter search criteria above</p>
+                </div>
+            </div>
+            
+            <!-- Alerts Tab -->
+            <div id="alerts" class="tab-content">
+                <div class="alert-settings">
+                    <h3>Alert Configuration</h3>
+                    <form id="alert-form">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="alerts-enabled"> Enable Discord Alerts
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="discord-webhook">Discord Webhook URL:</label>
+                            <input type="url" id="discord-webhook" placeholder="https://discord.com/api/webhooks/...">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="spike-threshold">Spike Threshold:</label>
+                                <input type="number" id="spike-threshold" value="5" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="error-threshold">Error Rate Threshold:</label>
+                                <input type="number" id="error-threshold" value="50" min="1">
+                            </div>
+                        </div>
+                        <button type="submit">Save Settings</button>
+                        <button type="button" id="test-alert">Send Test Alert</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Projects Tab -->
+            <div id="projects" class="tab-content">
+                <div class="project-management">
+                    <h3>Projects</h3>
+                    <button id="new-project-btn">New Project</button>
+                    <div id="projects-list">Loading...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/app.js"></script>
+</body>
+</html>

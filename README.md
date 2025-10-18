@@ -1,0 +1,239 @@
+# Tekno Logger
+
+A minimal overflow logging service designed to act as a backup when primary logging providers exceed quota, and as a debugging/alert surface. Built with TypeScript, Fastify, and MySQL.
+
+## 🎯 Purpose
+
+- **Overflow backup** when primary logging services (Sentry, Logtail) hit quotas
+- **Debugging surface** for investigating issues with short retention (24-72h)
+- **Alert system** with Discord notifications for error spikes
+- **Lightweight deployment** on Render free tier with DreamHost MySQL
+
+## 🏗️ Architecture
+
+- **Backend**: Node.js + Fastify + TypeScript
+- **Database**: MySQL (DreamHost shared hosting)
+- **Frontend**: Vanilla JS single-page application
+- **Deployment**: Render web service
+- **Monitoring**: Built-in health checks and metrics
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- MySQL database (local or DreamHost)
+- Git
+
+### Local Development
+
+1. **Clone and install dependencies:**
+```bash
+git clone <your-repo-url>
+cd tekno-logger
+npm install
+```
+
+2. **Setup environment:**
+```bash
+cp .env.example .env
+# Edit .env with your database credentials and secrets
+```
+
+3. **Initialize database:**
+```bash
+npm run migrate:dev
+npm run seed:dev
+```
+
+4. **Start development server:**
+```bash
+npm run dev
+```
+
+The service will be available at `http://localhost:3000`
+
+## 📦 Deployment
+
+### Render Deployment
+
+1. **Connect repository** to Render
+2. **Configure environment variables** in Render dashboard
+3. **Deploy** using the provided `render.yaml` configuration
+
+See `docs/logger_repo_copilot_guide_external_setup_v_1.md` for detailed deployment instructions.
+
+### Environment Variables
+
+Required environment variables:
+
+```bash
+# Server
+PORT=3000
+NODE_ENV=production
+
+# Database
+DB_HOST=mysql.example.com
+DB_NAME=your_database
+DB_USER=your_username
+DB_PASS=your_password
+
+# Security
+HMAC_SECRET=your-32-char-secret
+ADMIN_TOKEN=your-admin-token
+
+# Limits
+DEFAULT_RETENTION_DAYS=3
+MAX_PAYLOAD_BYTES=524288
+MAX_EVENTS_PER_POST=250
+```
+
+## 🔌 API Reference
+
+### Log Ingestion
+
+```bash
+POST /log
+Content-Type: application/json
+X-Project-Key: your-project-api-key
+X-Signature: sha256=hmac-signature
+
+[
+  {
+    "ts": "2024-01-15T10:30:00.000Z",
+    "level": "error",
+    "message": "Database connection failed",
+    "source": "api.database",
+    "env": "production",
+    "ctx": {"error": "Connection timeout"},
+    "user_id": "user123",
+    "request_id": "req-456"
+  }
+]
+```
+
+### Log Query
+
+```bash
+GET /logs?project_id=1&level=error&from=2024-01-15T00:00:00Z&limit=100
+```
+
+### Health Check
+
+```bash
+GET /healthz
+# Returns: {"ok": true, "database": "connected", "uptime": 12345}
+```
+
+## 🎛️ Dashboard Features
+
+- **Dashboard**: Error rates, event counts, top fingerprints
+- **Search**: Filter by project, level, time range, and message content
+- **Alerts**: Configure Discord notifications and thresholds
+- **Projects**: Manage API keys and project settings
+
+## 🔒 Security
+
+- **HMAC signature verification** for all log ingestion
+- **API key authentication** per project
+- **Rate limiting** per project and per IP
+- **Admin token protection** for management endpoints
+- **Input validation** and SQL injection prevention
+
+## 📊 Rate Limiting
+
+- **Per project**: 5000 events/minute (configurable)
+- **Per IP**: 100 requests/minute
+- **Payload size**: Max 512KB per request
+- **Batch size**: Max 250 events per request
+
+## 🔧 Maintenance
+
+The service includes automated maintenance tasks:
+
+- **Every 5 minutes**: Cleanup counters and check system health
+- **Daily**: Purge logs older than retention period
+
+These can be triggered via HTTP endpoints or GitHub Actions.
+
+## 🧪 Testing
+
+```bash
+# Run tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+```
+
+## 📝 Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run migrate      # Run database migrations
+npm run seed         # Seed initial data
+npm run purge        # Trigger data purge
+npm run maintain     # Trigger maintenance tasks
+```
+
+## 🗂️ Project Structure
+
+```
+tekno-logger/
+├── src/
+│   ├── routes/          # API endpoints
+│   ├── services/        # Business logic
+│   ├── middleware/      # Authentication, rate limiting
+│   ├── types/          # TypeScript definitions
+│   └── utils/          # Helper functions
+├── public/             # Static web UI files
+├── migrations/         # Database schema files
+├── scripts/           # Maintenance and setup scripts
+├── tests/             # Test files
+└── docs/              # Documentation
+```
+
+## 📋 Roadmap
+
+### Current (MVP)
+- ✅ Basic log ingestion and storage
+- ✅ Web UI for searching and management
+- ✅ Discord alert integration
+- ✅ Rate limiting and security
+
+### Future Enhancements
+- [ ] Full-text search on messages
+- [ ] Advanced alerting rules
+- [ ] Export capabilities
+- [ ] Horizontal scaling support
+- [ ] GraphQL API option
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the documentation in `/docs`
+2. Review existing GitHub issues
+3. Create a new issue with detailed information
+
+---
+
+Built with ❤️ for reliable logging overflow management
