@@ -61,7 +61,7 @@ The service will be available at `http://localhost:3000`
 2. **Configure environment variables** in Render dashboard
 3. **Deploy** using the provided `render.yaml` configuration
 
-See `docs/logger_repo_copilot_guide_external_setup_v_1.md` for detailed deployment instructions.
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for detailed deployment instructions.
 
 ### Environment Variables
 
@@ -183,6 +183,15 @@ npm run seed         # Seed initial data
 npm run purge        # Trigger data purge
 npm run maintain     # Trigger maintenance tasks
 ```
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [PROJECT_PLAN.md](PROJECT_PLAN.md) | Development checklist and roadmap |
+| [COPILOT_BRIEF.md](COPILOT_BRIEF.md) | AI-assisted development guide |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment instructions |
+| [docs/README.md](docs/README.md) | Documentation index |
 
 ## 🗂️ Project Structure
 
