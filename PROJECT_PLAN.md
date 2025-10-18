@@ -53,10 +53,16 @@
   - [ ] Add `GET /metrics` with basic service stats
   - [ ] Include database connectivity checks
 
+- [ ] **Self-Triggering Maintenance**
+  - [ ] Add maintenance state tracking (last run timestamp, in-progress flag)
+  - [ ] Implement smart triggering in `/log` endpoint (check every request)
+  - [ ] Create maintenance tasks: cleanup counters, health checks
+  - [ ] Ensure maintenance runs async (non-blocking for log ingestion)
+
 - [ ] **Admin Endpoints**
   - [ ] Implement project CRUD in `src/routes/admin.ts`
-  - [ ] Add `POST /admin/maintain` (5-minute tasks)
-  - [ ] Add `POST /admin/purge` (daily cleanup)
+  - [ ] Add `POST /admin/maintain` (manual trigger fallback)
+  - [ ] Add `POST /admin/purge` (manual daily cleanup)
   - [ ] Secure all admin routes with admin token
 
 - [ ] **Configuration Endpoint**
@@ -100,18 +106,17 @@
   - [ ] Add integration tests for API endpoints
   - [ ] Test rate limiting and security
   - [ ] Performance test with 300KB/200-event batches
+  - [ ] Test self-triggering maintenance under load
 
 - [ ] **Deployment Preparation**
   - [ ] Validate `render.yaml` configuration
-  - [ ] Test GitHub Actions maintenance workflows
   - [ ] Verify environment variable setup
   - [ ] Test database migrations on fresh instance
+  - [ ] Verify self-maintenance works in production
 
 - [ ] **Documentation**
-  - [ ] Update README.md with final deployment steps
-  - [ ] Create API documentation
-  - [ ] Add troubleshooting guide
-  - [ ] Document maintenance procedures
+  - [ ] Update README.md with deployment steps and maintenance approach
+  - [ ] Document manual admin endpoints as fallbacks
 
 ## 🎯 Success Criteria
 
@@ -133,20 +138,20 @@
 - [ ] **Error Rates**: High error rate thresholds trigger correctly
 - [ ] **Test Alerts**: Manual test alert functionality works
 
-### Data Management
-- [ ] **Retention**: Purge job removes data older than retention period
+### Data Management & Self-Maintenance
+- [ ] **Self-Triggering**: Maintenance runs automatically during normal traffic (every 5+ minutes)
+- [ ] **Non-Blocking**: Maintenance doesn't slow down log ingestion responses
+- [ ] **Retention**: Manual purge removes data older than retention period
 - [ ] **Data Integrity**: Fresh data remains intact after purge
-- [ ] **Maintenance**: 5-minute maintenance tasks run cleanly
+- [ ] **Fallback**: Manual admin endpoints work when self-maintenance fails
 - [ ] **Migration**: Database schema creates successfully on fresh instance
 
-## 📚 Key Documentation Files
+## 📚 Documentation (Minimal)
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `README.md` | Main project documentation | ✅ Complete |
-| `COPILOT_BRIEF.md` | AI development assistant guide | ✅ Complete |
-| `docs/DEPLOYMENT.md` | Deployment instructions | 📝 To create |
-| `docs/API.md` | API documentation | 📝 To create |
+| `README.md` | Project overview & deployment | ✅ Complete |
+| `PROJECT_PLAN.md` | Development checklist (this file) | ✅ Complete |
 | `.env.example` | Environment configuration template | ✅ Complete |
 
 ## 🔄 Development Workflow
@@ -170,9 +175,40 @@ npm run lint          # Code quality checks
 2. **Environment prep**: Set up Render + DreamHost services
 3. **Initial deploy**: Push to Render with environment variables
 4. **Data setup**: Run migrations and create initial project
-5. **Monitoring**: Verify health checks and scheduled jobs
+5. **Monitoring**: Verify health checks and self-triggering maintenance
 
-## 🚨 Critical Implementation Notes
+## � Self-Triggering Maintenance Strategy
+
+### Core Implementation
+- **Trigger Point**: Check maintenance needed on every `/log` request
+- **Timing**: Run maintenance if last run >5 minutes ago
+- **Execution**: Fire-and-forget async execution (don't block log response)
+- **State Tracking**: Store `last_maintenance` timestamp and `in_progress` flag
+- **Safety**: Skip if maintenance already running
+
+### Maintenance Tasks (Quick Operations)
+```typescript
+async function runMaintenance() {
+  // 1. Cleanup expired minute counters (older than 2 hours)
+  // 2. Update maintenance timestamp
+  // 3. Basic health checks
+  // 4. Clear old fingerprint counts
+  // Total execution time: <30 seconds
+}
+```
+
+### Purge Strategy
+- **Manual Trigger**: `POST /admin/purge` when convenient
+- **Frequency**: Daily or as-needed basis
+- **Alternative**: Smart daily check (first request each day triggers purge)
+
+### Benefits
+- ✅ **Zero external costs** (no GitHub Actions/cron services)
+- ✅ **Self-healing** system that maintains itself
+- ✅ **Traffic-responsive** (busy periods = more frequent maintenance)
+- ✅ **No external dependencies** to fail
+
+## �🚨 Critical Implementation Notes
 
 ### Database Considerations
 - **Connection Pooling**: Use min 2, max 10 connections for DreamHost

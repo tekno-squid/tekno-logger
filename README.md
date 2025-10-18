@@ -61,7 +61,7 @@ The service will be available at `http://localhost:3000`
 2. **Configure environment variables** in Render dashboard
 3. **Deploy** using the provided `render.yaml` configuration
 
-See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for detailed deployment instructions.
+See the deployment section below for setup instructions.
 
 ### Environment Variables
 
@@ -147,14 +147,14 @@ GET /healthz
 - **Payload size**: Max 512KB per request
 - **Batch size**: Max 250 events per request
 
-## 🔧 Maintenance
+## � Self-Maintenance
 
-The service includes automated maintenance tasks:
+The service maintains itself automatically:
 
-- **Every 5 minutes**: Cleanup counters and check system health
-- **Daily**: Purge logs older than retention period
-
-These can be triggered via HTTP endpoints or GitHub Actions.
+- **Smart Triggering**: Maintenance runs during normal log ingestion (every 5+ minutes)  
+- **Non-Blocking**: Maintenance doesn't slow down log responses
+- **Manual Fallback**: Admin endpoints available for manual maintenance and purging
+- **Zero External Costs**: No scheduled jobs or external services required
 
 ## 🧪 Testing
 
@@ -184,14 +184,46 @@ npm run purge        # Trigger data purge
 npm run maintain     # Trigger maintenance tasks
 ```
 
-## 📚 Documentation
+## � Deployment
 
-| Document | Purpose |
-|----------|---------|
-| [PROJECT_PLAN.md](PROJECT_PLAN.md) | Development checklist and roadmap |
-| [COPILOT_BRIEF.md](COPILOT_BRIEF.md) | AI-assisted development guide |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment instructions |
-| [docs/README.md](docs/README.md) | Documentation index |
+### Prerequisites
+- Render account
+- DreamHost MySQL database (or local MySQL for development)
+- Discord webhook URL (optional, for alerts)
+
+### Quick Setup
+
+1. **Database Setup (DreamHost)**
+   - Create MySQL database and user in DreamHost panel
+   - Add "%" to allowable hosts for external connections
+   - Note connection details (host, database, username, password)
+
+2. **Render Deployment**
+   - Connect GitHub repository to Render
+   - Set environment variables (see `.env.example`)
+   - Deploy with: Build Command: `npm ci && npm run build`, Start: `npm start`
+
+3. **Initialize**
+   ```bash
+   npm run migrate  # Create database tables
+   npm run seed     # Create initial project
+   ```
+
+### Environment Variables
+Copy `.env.example` to `.env` and configure:
+```bash
+DB_HOST=mysql.example.com     # DreamHost MySQL host
+DB_NAME=your_database         # Database name
+DB_USER=your_username         # Database username  
+DB_PASS=your_password         # Database password
+HMAC_SECRET=32-char-secret    # Generate random secret
+ADMIN_TOKEN=32-char-token     # Generate random token
+```
+
+### Maintenance
+The service maintains itself automatically during normal operation. Manual admin endpoints available:
+- `POST /admin/maintain` - Run maintenance tasks
+- `POST /admin/purge` - Clean old log data
 
 ## 🗂️ Project Structure
 
