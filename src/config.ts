@@ -15,19 +15,19 @@ const configSchema = z.object({
   DB_NAME: z.string().min(1, 'Database name is required'), 
   DB_USER: z.string().min(1, 'Database user is required'),
   DB_PASS: z.string().min(1, 'Database password is required'),
-  DB_POOL_MIN: z.string().transform(Number).pipe(z.number().int().min(1).default(2)),
-  DB_POOL_MAX: z.string().transform(Number).pipe(z.number().int().min(1).default(10)),
+  DB_POOL_MIN: z.string().optional().transform(val => val ? Number(val) : 2).pipe(z.number().int().min(1)),
+  DB_POOL_MAX: z.string().optional().transform(val => val ? Number(val) : 10).pipe(z.number().int().min(1)),
   
   // Security Configuration
   HMAC_SECRET: z.string().min(32, 'HMAC secret must be at least 32 characters'),
   ADMIN_TOKEN: z.string().min(32, 'Admin token must be at least 32 characters'),
   
-  // Service Limits
-  DEFAULT_RETENTION_DAYS: z.string().transform(Number).pipe(z.number().int().min(1).default(3)),
-  MAX_PAYLOAD_BYTES: z.string().transform(Number).pipe(z.number().int().positive().default(524288)),
-  MAX_EVENTS_PER_POST: z.string().transform(Number).pipe(z.number().int().positive().default(250)),
-  RATE_LIMIT_PER_MINUTE: z.string().transform(Number).pipe(z.number().int().positive().default(5000)),
-  RATE_LIMIT_PER_IP: z.string().transform(Number).pipe(z.number().int().positive().default(100)),
+  // Service Limits (Optional with defaults)
+  DEFAULT_RETENTION_DAYS: z.string().optional().transform(val => val ? Number(val) : 3).pipe(z.number().int().min(1)),
+  MAX_PAYLOAD_BYTES: z.string().optional().transform(val => val ? Number(val) : 524288).pipe(z.number().int().positive()),
+  MAX_EVENTS_PER_POST: z.string().optional().transform(val => val ? Number(val) : 250).pipe(z.number().int().positive()),
+  RATE_LIMIT_PER_MINUTE: z.string().optional().transform(val => val ? Number(val) : 5000).pipe(z.number().int().positive()),
+  RATE_LIMIT_PER_IP: z.string().optional().transform(val => val ? Number(val) : 100).pipe(z.number().int().positive()),
   
   // Optional Service Configuration
   SERVICE_NAME: z.string().default('tekno-logger'),
