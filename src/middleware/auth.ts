@@ -148,6 +148,11 @@ async function getRawRequestBody(request: FastifyRequest): Promise<string> {
       return request.body.toString('utf8');
     }
     
+    // If request.body is an object, serialize it
+    if (request.body && typeof request.body === 'object') {
+      return JSON.stringify(request.body);
+    }
+    
     if (typeof request.body === 'object' && request.body !== null) {
       return JSON.stringify(request.body);
     }
