@@ -174,7 +174,7 @@ async function registerRoutes(app: FastifyInstance): Promise<void> {
 
   // API routes
   await app.register(import('@/routes/logs'), { prefix: '/api' });
-  // await app.register(import('@/routes/system'), { prefix: '/api' });
+  await app.register(import('@/routes/system'), { prefix: '/api' });
   // await app.register(import('@/routes/admin'), { prefix: '/admin' });
 }
 
