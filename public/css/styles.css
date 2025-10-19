@@ -1252,7 +1252,8 @@ header {
     background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(8px);
     z-index: 10000;
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
     align-items: center;
     justify-content: center;
     opacity: 0;
