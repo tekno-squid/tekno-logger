@@ -1252,11 +1252,19 @@ header {
     background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(8px);
     z-index: 10000;
-    display: flex;
+    display: none; /* Hidden by default */
     align-items: center;
     justify-content: center;
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-overlay.show {
+    opacity: 1;
 }
 
 .modal-overlay.show {

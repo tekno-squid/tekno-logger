@@ -224,9 +224,14 @@ class TeknoLogger {
         errorDiv.style.display = 'none';
         errorDiv.textContent = '';
         
-        // Show modal
-        modal.style.display = 'flex';
+        // Show modal with proper CSS transitions
+        modal.classList.add('visible');
         document.body.style.overflow = 'hidden';
+        
+        // Add show class for animation after display is set
+        requestAnimationFrame(() => {
+            modal.classList.add('show');
+        });
         
         // Focus on token input
         setTimeout(() => {
@@ -236,8 +241,15 @@ class TeknoLogger {
 
     hideLoginModal() {
         const modal = document.getElementById('login-modal-overlay');
-        modal.style.display = 'none';
-        document.body.style.overflow = '';
+        
+        // Remove show class for animation
+        modal.classList.remove('show');
+        
+        // Hide modal after animation completes
+        setTimeout(() => {
+            modal.classList.remove('visible');
+            document.body.style.overflow = '';
+        }, 200); // Match CSS transition duration
         
         // Reject promise if it was waiting
         if (this.loginReject) {
