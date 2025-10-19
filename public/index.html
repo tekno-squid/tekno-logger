@@ -6,107 +6,326 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tekno Logger - Dashboard</title>
     <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div class="container">
         <header>
-            <h1>📋 Tekno Logger</h1>
-            <p>Minimal overflow logging service</p>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>📋 Tekno Logger</h1>
+                    <p>Overflow logging service with self-maintenance</p>
+                </div>
+                <div class="header-right">
+                    <div class="status-indicator" id="service-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Checking...</span>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <nav class="tabs">
-            <button class="tab-button active" data-tab="dashboard">Dashboard</button>
-            <button class="tab-button" data-tab="search">Search</button>
-            <button class="tab-button" data-tab="alerts">Alerts</button>
-            <button class="tab-button" data-tab="projects">Projects</button>
+            <button class="tab-button active" data-tab="dashboard">
+                <span class="tab-icon">📊</span>
+                Dashboard
+            </button>
+            <button class="tab-button" data-tab="search">
+                <span class="tab-icon">🔍</span>
+                Search Logs
+            </button>
+            <button class="tab-button" data-tab="projects">
+                <span class="tab-icon">📁</span>
+                Projects
+            </button>
+            <button class="tab-button" data-tab="admin">
+                <span class="tab-icon">⚙️</span>
+                Admin
+            </button>
         </nav>
 
         <main>
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Error Rate (1h)</h3>
-                        <div class="stat-value" id="error-rate">--</div>
+                <div class="dashboard-grid">
+                    <div class="stats-section">
+                        <h3>Service Statistics</h3>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <h4>Error Rate</h4>
+                                    <span class="stat-period">(Last Hour)</span>
+                                </div>
+                                <div class="stat-value" id="error-rate">--</div>
+                                <div class="stat-change" id="error-rate-change">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <h4>Total Events</h4>
+                                    <span class="stat-period">(Last Hour)</span>
+                                </div>
+                                <div class="stat-value" id="total-events">--</div>
+                                <div class="stat-change" id="total-events-change">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <h4>Active Projects</h4>
+                                    <span class="stat-period">(Total)</span>
+                                </div>
+                                <div class="stat-value" id="total-projects">--</div>
+                                <div class="stat-change" id="projects-change">--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <h4>Maintenance</h4>
+                                    <span class="stat-period">(Last Run)</span>
+                                </div>
+                                <div class="stat-value" id="last-maintenance">--</div>
+                                <div class="stat-change" id="maintenance-status">--</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <h3>Total Events (1h)</h3>
-                        <div class="stat-value" id="total-events">--</div>
+
+                    <div class="recent-section">
+                        <div class="section-header">
+                            <h3>Recent Errors</h3>
+                            <button class="refresh-btn" id="refresh-errors" title="Refresh">🔄</button>
+                        </div>
+                        <div class="recent-errors" id="recent-errors-list">
+                            <div class="loading">Loading recent errors...</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <h3>Top Fingerprint</h3>
-                        <div class="stat-value" id="top-fingerprint">--</div>
+
+                    <div class="fingerprints-section">
+                        <div class="section-header">
+                            <h3>Top Error Fingerprints</h3>
+                            <select id="fingerprint-period">
+                                <option value="1h">Last Hour</option>
+                                <option value="24h" selected>Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                            </select>
+                        </div>
+                        <div class="fingerprints-list" id="top-fingerprints">
+                            <div class="loading">Loading fingerprints...</div>
+                        </div>
                     </div>
-                </div>
-                <div class="recent-errors">
-                    <h3>Recent Errors</h3>
-                    <div id="recent-errors-list">Loading...</div>
                 </div>
             </div>
 
             <!-- Search Tab -->
             <div id="search" class="tab-content">
-                <div class="search-form">
-                    <div class="form-row">
-                        <select id="search-project">
-                            <option value="">All Projects</option>
-                        </select>
-                        <select id="search-level">
-                            <option value="">All Levels</option>
-                            <option value="error">Error</option>
-                            <option value="warn">Warning</option>
-                            <option value="info">Info</option>
-                            <option value="debug">Debug</option>
-                        </select>
-                        <input type="text" id="search-query" placeholder="Search message...">
-                        <button id="search-btn">Search</button>
+                <div class="search-container">
+                    <div class="search-form">
+                        <div class="search-filters">
+                            <div class="filter-row">
+                                <div class="filter-group">
+                                    <label for="search-project">Project:</label>
+                                    <select id="search-project">
+                                        <option value="">All Projects</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label for="search-level">Level:</label>
+                                    <select id="search-level">
+                                        <option value="">All Levels</option>
+                                        <option value="fatal">Fatal</option>
+                                        <option value="error">Error</option>
+                                        <option value="warn">Warning</option>
+                                        <option value="info">Info</option>
+                                        <option value="debug">Debug</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label for="search-env">Environment:</label>
+                                    <select id="search-env">
+                                        <option value="">All Environments</option>
+                                        <option value="production">Production</option>
+                                        <option value="staging">Staging</option>
+                                        <option value="development">Development</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="filter-row">
+                                <div class="filter-group search-text-group">
+                                    <label for="search-query">Message:</label>
+                                    <input type="text" id="search-query" placeholder="Search in log messages...">
+                                </div>
+                                <div class="filter-group">
+                                    <label for="search-time-range">Time Range:</label>
+                                    <select id="search-time-range">
+                                        <option value="1h">Last Hour</option>
+                                        <option value="24h" selected>Last 24 Hours</option>
+                                        <option value="7d">Last 7 Days</option>
+                                        <option value="custom">Custom Range</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <button id="search-btn" class="search-button">🔍 Search</button>
+                                    <button id="clear-search-btn" class="clear-button">Clear</button>
+                                </div>
+                            </div>
+                            <div class="filter-row custom-time-range" id="custom-time-range" style="display: none;">
+                                <div class="filter-group">
+                                    <label for="search-start-time">From:</label>
+                                    <input type="datetime-local" id="search-start-time">
+                                </div>
+                                <div class="filter-group">
+                                    <label for="search-end-time">To:</label>
+                                    <input type="datetime-local" id="search-end-time">
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div id="search-results">
-                    <p>Enter search criteria above</p>
-                </div>
-            </div>
 
-            <!-- Alerts Tab -->
-            <div id="alerts" class="tab-content">
-                <div class="alert-settings">
-                    <h3>Alert Configuration</h3>
-                    <form id="alert-form">
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="alerts-enabled"> Enable Discord Alerts
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="discord-webhook">Discord Webhook URL:</label>
-                            <input type="url" id="discord-webhook" placeholder="https://discord.com/api/webhooks/...">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="spike-threshold">Spike Threshold:</label>
-                                <input type="number" id="spike-threshold" value="5" min="1">
+                    <div class="search-results-container">
+                        <div class="search-results-header">
+                            <div class="results-info">
+                                <span id="search-results-count">Enter search criteria above</span>
                             </div>
-                            <div class="form-group">
-                                <label for="error-threshold">Error Rate Threshold:</label>
-                                <input type="number" id="error-threshold" value="50" min="1">
+                            <div class="results-controls">
+                                <select id="results-per-page">
+                                    <option value="25">25 per page</option>
+                                    <option value="50" selected>50 per page</option>
+                                    <option value="100">100 per page</option>
+                                </select>
                             </div>
                         </div>
-                        <button type="submit">Save Settings</button>
-                        <button type="button" id="test-alert">Send Test Alert</button>
-                    </form>
+                        <div class="search-results" id="search-results">
+                            <div class="search-placeholder">
+                                <div class="placeholder-icon">🔍</div>
+                                <p>Use the filters above to search through your logs</p>
+                                <p class="placeholder-hint">Pro tip: Leave fields empty to search all values</p>
+                            </div>
+                        </div>
+                        <div class="pagination" id="search-pagination" style="display: none;">
+                            <button id="prev-page" disabled>← Previous</button>
+                            <span id="page-info">Page 1 of 1</span>
+                            <button id="next-page" disabled>Next →</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Projects Tab -->
             <div id="projects" class="tab-content">
-                <div class="project-management">
-                    <h3>Projects</h3>
-                    <button id="new-project-btn">New Project</button>
-                    <div id="projects-list">Loading...</div>
+                <div class="projects-container">
+                    <div class="projects-header">
+                        <div class="header-left">
+                            <h3>Project Management</h3>
+                            <p>Manage your logging projects and view their configurations</p>
+                        </div>
+                        <div class="header-right">
+                            <button id="new-project-btn" class="primary-button">
+                                <span class="button-icon">➕</span>
+                                New Project
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="projects-list" id="projects-list">
+                        <div class="loading">Loading projects...</div>
+                    </div>
+                </div>
+
+                <!-- New Project Modal -->
+                <div class="modal" id="new-project-modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4>Create New Project</h4>
+                            <button class="modal-close" id="close-new-project">&times;</button>
+                        </div>
+                        <form id="new-project-form">
+                            <div class="form-group">
+                                <label for="project-name">Project Name:</label>
+                                <input type="text" id="project-name" required placeholder="My Application">
+                            </div>
+                            <div class="form-group">
+                                <label for="project-slug">Project Slug:</label>
+                                <input type="text" id="project-slug" required placeholder="my-app" pattern="[a-z0-9-]+">
+                                <small>Lowercase letters, numbers, and hyphens only</small>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="project-retention">Retention (days):</label>
+                                    <input type="number" id="project-retention" value="3" min="1" max="30">
+                                </div>
+                                <div class="form-group">
+                                    <label for="project-rate-limit">Rate Limit (per minute):</label>
+                                    <input type="number" id="project-rate-limit" value="5000" min="1">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" id="cancel-new-project" class="secondary-button">Cancel</button>
+                                <button type="submit" class="primary-button">Create Project</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Tab -->
+            <div id="admin" class="tab-content">
+                <div class="admin-container">
+                    <div class="admin-header">
+                        <h3>System Administration</h3>
+                        <p>Monitor and control system maintenance and health</p>
+                    </div>
+
+                    <div class="admin-grid">
+                        <div class="admin-section">
+                            <h4>Maintenance Control</h4>
+                            <div class="maintenance-status" id="maintenance-status-section">
+                                <div class="loading">Loading maintenance status...</div>
+                            </div>
+                            <div class="maintenance-actions">
+                                <button id="trigger-maintenance" class="action-button">
+                                    <span class="button-icon">🔧</span>
+                                    Run Maintenance
+                                </button>
+                                <button id="trigger-purge" class="action-button">
+                                    <span class="button-icon">🗑️</span>
+                                    Run Purge
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="admin-section">
+                            <h4>System Health</h4>
+                            <div class="health-status" id="health-status-section">
+                                <div class="loading">Loading health status...</div>
+                            </div>
+                            <div class="health-actions">
+                                <button id="refresh-health" class="action-button">
+                                    <span class="button-icon">🔄</span>
+                                    Refresh Status
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="admin-section">
+                            <h4>Service Configuration</h4>
+                            <div class="config-display" id="config-display">
+                                <div class="loading">Loading configuration...</div>
+                            </div>
+                            <div class="config-actions">
+                                <button id="refresh-config" class="action-button">
+                                    <span class="button-icon">⚙️</span>
+                                    Refresh Config
+                                </button>
+                                <button id="clear-config-cache" class="action-button">
+                                    <span class="button-icon">🧹</span>
+                                    Clear Cache
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toast-container"></div>
     </div>
 
     <script src="/js/app.js"></script>

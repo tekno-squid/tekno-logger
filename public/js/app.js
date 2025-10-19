@@ -1,18 +1,29 @@
 // Tekno Logger Dashboard JavaScript
-// Handles UI interactions and API calls
+// Modern ES6+ implementation with comprehensive API integration
 
 class TeknoLogger {
     constructor() {
         this.currentProject = null;
+        this.currentPage = 1;
+        this.resultsPerPage = 50;
+        this.adminToken = localStorage.getItem('tekno-logger-admin-token');
+        
         this.init();
     }
 
-    init() {
-        this.setupTabs();
-        this.setupEventListeners();
-        this.loadDashboard();
+    async init() {
+        try {
+            this.setupTabs();
+            this.setupEventListeners();
+            await this.checkServiceHealth();
+            await this.loadDashboard();
+        } catch (error) {
+            this.showToast('Failed to initialize dashboard', 'error');
+            console.error('Initialization failed:', error);
+        }
     }
 
+    // ===== TAB MANAGEMENT =====
     setupTabs() {
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -21,11 +32,11 @@ class TeknoLogger {
             button.addEventListener('click', () => {
                 const targetTab = button.dataset.tab;
                 
-                // Update buttons
+                // Update button states
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
                 
-                // Update content
+                // Update content visibility
                 tabContents.forEach(content => content.classList.remove('active'));
                 document.getElementById(targetTab).classList.add('active');
                 
@@ -35,200 +46,640 @@ class TeknoLogger {
         });
     }
 
+    async loadTabData(tabName) {
+        try {
+            switch (tabName) {
+                case 'dashboard':
+                    await this.loadDashboard();
+                    break;
+                case 'search':
+                    await this.loadSearchProjects();
+                    break;
+                case 'projects':
+                    await this.loadProjects();
+                    break;
+                case 'admin':
+                    await this.loadAdminData();
+                    break;
+            }
+        } catch (error) {
+            this.showToast(`Failed to load ${tabName} data`, 'error');
+            console.error(`Failed to load ${tabName}:`, error);
+        }
+    }
+
+    // ===== EVENT LISTENERS =====
     setupEventListeners() {
+        // Dashboard refresh
+        document.getElementById('refresh-errors')?.addEventListener('click', () => {
+            this.loadRecentErrors();
+        });
+
         // Search functionality
         document.getElementById('search-btn').addEventListener('click', () => {
             this.performSearch();
         });
 
-        // Alert form
-        document.getElementById('alert-form').addEventListener('submit', (e) => {
+        document.getElementById('clear-search-btn').addEventListener('click', () => {
+            this.clearSearch();
+        });
+
+        // Search on Enter key
+        document.getElementById('search-query').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.performSearch();
+            }
+        });
+
+        // Project management
+        document.getElementById('new-project-btn')?.addEventListener('click', () => {
+            this.showNewProjectModal();
+        });
+
+        document.getElementById('close-new-project')?.addEventListener('click', () => {
+            this.hideNewProjectModal();
+        });
+
+        document.getElementById('cancel-new-project')?.addEventListener('click', () => {
+            this.hideNewProjectModal();
+        });
+
+        document.getElementById('new-project-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
-            this.saveAlertSettings();
+            this.createProject();
         });
 
-        // Test alert button
-        document.getElementById('test-alert').addEventListener('click', () => {
-            this.sendTestAlert();
+        // Auto-generate slug from name
+        document.getElementById('project-name')?.addEventListener('input', (e) => {
+            const slug = e.target.value
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            document.getElementById('project-slug').value = slug;
         });
 
-        // New project button
-        document.getElementById('new-project-btn').addEventListener('click', () => {
-            this.createNewProject();
+        // Admin functionality
+        document.getElementById('trigger-maintenance')?.addEventListener('click', () => {
+            this.triggerMaintenance();
+        });
+
+        document.getElementById('trigger-purge')?.addEventListener('click', () => {
+            this.triggerPurge();
+        });
+
+        document.getElementById('refresh-health')?.addEventListener('click', () => {
+            this.loadAdminData();
+        });
+
+        document.getElementById('clear-config-cache')?.addEventListener('click', () => {
+            this.clearConfigCache();
         });
     }
 
-    async loadTabData(tab) {
-        switch (tab) {
-            case 'dashboard':
-                await this.loadDashboard();
-                break;
-            case 'search':
-                await this.loadProjects();
-                break;
-            case 'alerts':
-                await this.loadAlertSettings();
-                break;
-            case 'projects':
-                await this.loadProjectsList();
-                break;
-        }
-    }
-
-    async loadDashboard() {
-        try {
-            // Load dashboard stats
-            const stats = await this.apiCall('/api/stats');
-            document.getElementById('error-rate').textContent = `${stats.errorRate}%`;
-            document.getElementById('total-events').textContent = stats.totalEvents.toLocaleString();
-            document.getElementById('top-fingerprint').textContent = stats.topFingerprint || 'None';
-
-            // Load recent errors
-            const recentErrors = await this.apiCall('/logs?level=error&limit=5');
-            this.renderLogs(recentErrors.logs, 'recent-errors-list');
-        } catch (error) {
-            console.error('Failed to load dashboard:', error);
-            this.showError('Failed to load dashboard data');
-        }
-    }
-
-    async loadProjects() {
-        try {
-            const projects = await this.apiCall('/admin/projects');
-            const select = document.getElementById('search-project');
-            select.innerHTML = '<option value="">All Projects</option>';
-            
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project.id;
-                option.textContent = project.name;
-                select.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Failed to load projects:', error);
-        }
-    }
-
-    async performSearch() {
-        const project = document.getElementById('search-project').value;
-        const level = document.getElementById('search-level').value;
-        const query = document.getElementById('search-query').value;
-        
-        const params = new URLSearchParams();
-        if (project) params.set('project_id', project);
-        if (level) params.set('level', level);
-        if (query) params.set('q', query);
-        params.set('limit', '50');
-
-        try {
-            const results = await this.apiCall(`/logs?${params}`);
-            this.renderLogs(results.logs, 'search-results');
-        } catch (error) {
-            console.error('Search failed:', error);
-            this.showError('Search failed');
-        }
-    }
-
-    renderLogs(logs, containerId) {
-        const container = document.getElementById(containerId);
-        
-        if (!logs || logs.length === 0) {
-            container.innerHTML = '<p class="loading">No logs found</p>';
-            return;
-        }
-
-        const html = logs.map(log => `
-            <div class="log-entry ${log.level}">
-                <div class="log-entry-header">
-                    <span class="log-level ${log.level}">${log.level}</span>
-                    <span class="log-timestamp">${new Date(log.ts).toLocaleString()}</span>
-                </div>
-                <div class="log-message">${this.escapeHtml(log.message)}</div>
-                <div class="log-context">
-                    <strong>Source:</strong> ${log.source} | 
-                    <strong>Env:</strong> ${log.env}
-                    ${log.ctx_json ? `| <span class="expandable" onclick="this.nextSibling.style.display = this.nextSibling.style.display === 'none' ? 'block' : 'none'">Context</span><pre style="display:none; margin-top:5px; background:#f0f0f0; padding:5px; border-radius:3px;">${JSON.stringify(JSON.parse(log.ctx_json), null, 2)}</pre>` : ''}
-                </div>
-            </div>
-        `).join('');
-        
-        container.innerHTML = html;
-    }
-
-    async loadAlertSettings() {
-        // Implementation for loading alert settings
-        // This would call the admin API to get current alert configuration
-    }
-
-    async saveAlertSettings() {
-        const enabled = document.getElementById('alerts-enabled').checked;
-        const webhook = document.getElementById('discord-webhook').value;
-        const spikeThreshold = document.getElementById('spike-threshold').value;
-        const errorThreshold = document.getElementById('error-threshold').value;
-
-        try {
-            await this.apiCall('/admin/alerts', {
-                method: 'POST',
-                body: JSON.stringify({
-                    enabled,
-                    discord_webhook: webhook,
-                    spike_n: parseInt(spikeThreshold),
-                    error_rate_n: parseInt(errorThreshold)
-                })
-            });
-            this.showSuccess('Alert settings saved');
-        } catch (error) {
-            console.error('Failed to save alert settings:', error);
-            this.showError('Failed to save settings');
-        }
-    }
-
-    async sendTestAlert() {
-        try {
-            await this.apiCall('/admin/alerts/test', { method: 'POST' });
-            this.showSuccess('Test alert sent');
-        } catch (error) {
-            console.error('Failed to send test alert:', error);
-            this.showError('Failed to send test alert');
-        }
-    }
-
-    async loadProjectsList() {
-        // Implementation for loading and managing projects
-    }
-
-    async createNewProject() {
-        const name = prompt('Enter project name:');
-        if (!name) return;
-
-        try {
-            const project = await this.apiCall('/admin/projects', {
-                method: 'POST',
-                body: JSON.stringify({ name })
-            });
-            this.showSuccess(`Project created: ${project.name}`);
-            this.loadProjectsList();
-        } catch (error) {
-            console.error('Failed to create project:', error);
-            this.showError('Failed to create project');
-        }
-    }
-
+    // ===== API HELPERS =====
     async apiCall(endpoint, options = {}) {
         const defaultOptions = {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json'
-            }
+                'Content-Type': 'application/json',
+            },
         };
 
-        const response = await fetch(endpoint, { ...defaultOptions, ...options });
+        // Add admin token if required and available
+        if (endpoint.startsWith('/admin') && this.adminToken) {
+            defaultOptions.headers['X-Admin-Token'] = this.adminToken;
+        }
+
+        const finalOptions = { ...defaultOptions, ...options };
+        
+        if (finalOptions.body && typeof finalOptions.body === 'object') {
+            finalOptions.body = JSON.stringify(finalOptions.body);
+        }
+
+        const response = await fetch(endpoint, finalOptions);
         
         if (!response.ok) {
-            throw new Error(`API call failed: ${response.status}`);
+            if (response.status === 401 && endpoint.startsWith('/admin')) {
+                await this.promptForAdminToken();
+                return this.apiCall(endpoint, options); // Retry with token
+            }
+            
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
         }
-        
+
         return response.json();
+    }
+
+    async promptForAdminToken() {
+        const token = prompt('Please enter the admin token:');
+        if (token) {
+            this.adminToken = token;
+            localStorage.setItem('tekno-logger-admin-token', token);
+        } else {
+            throw new Error('Admin token required');
+        }
+    }
+
+    // ===== SERVICE HEALTH =====
+    async checkServiceHealth() {
+        try {
+            const health = await this.apiCall('/api/health');
+            const statusElement = document.getElementById('service-status');
+            
+            if (statusElement) {
+                const dot = statusElement.querySelector('.status-dot');
+                const text = statusElement.querySelector('.status-text');
+                
+                if (health.database?.connected) {
+                    dot.className = 'status-dot status-healthy';
+                    text.textContent = 'Healthy';
+                } else {
+                    dot.className = 'status-dot status-unhealthy';
+                    text.textContent = 'Database Issue';
+                }
+            }
+            
+            return health;
+        } catch (error) {
+            const statusElement = document.getElementById('service-status');
+            if (statusElement) {
+                const dot = statusElement.querySelector('.status-dot');
+                const text = statusElement.querySelector('.status-text');
+                dot.className = 'status-dot status-unhealthy';
+                text.textContent = 'Offline';
+            }
+            console.error('Health check failed:', error);
+        }
+    }
+
+    // ===== DASHBOARD =====
+    async loadDashboard() {
+        try {
+            await Promise.all([
+                this.loadServiceStats(),
+                this.loadRecentErrors()
+            ]);
+        } catch (error) {
+            console.error('Failed to load dashboard:', error);
+        }
+    }
+
+    async loadServiceStats() {
+        try {
+            const stats = await this.apiCall('/api/stats');
+            
+            // Update stat cards
+            document.getElementById('error-rate').textContent = `${stats.error_rate || 0}%`;
+            document.getElementById('total-events').textContent = this.formatNumber(stats.total_events || 0);
+            document.getElementById('total-projects').textContent = stats.total_projects || 0;
+            
+            // Update last maintenance
+            const lastMaintenance = document.getElementById('last-maintenance');
+            const maintenanceStatus = document.getElementById('maintenance-status');
+            
+            if (stats.maintenance?.last_run) {
+                const date = new Date(stats.maintenance.last_run);
+                lastMaintenance.textContent = this.formatRelativeTime(date);
+                maintenanceStatus.textContent = stats.maintenance.in_progress ? 'Running...' : 'Idle';
+            } else {
+                lastMaintenance.textContent = 'Never';
+                maintenanceStatus.textContent = 'Pending';
+            }
+            
+        } catch (error) {
+            console.error('Failed to load service stats:', error);
+            // Set fallback values
+            document.getElementById('error-rate').textContent = '--';
+            document.getElementById('total-events').textContent = '--';
+            document.getElementById('total-projects').textContent = '--';
+            document.getElementById('last-maintenance').textContent = '--';
+            document.getElementById('maintenance-status').textContent = 'Unknown';
+        }
+    }
+
+    async loadRecentErrors() {
+        try {
+            const container = document.getElementById('recent-errors-list');
+            container.innerHTML = '<div class="loading">Loading recent errors...</div>';
+            
+            // Get recent error-level logs
+            const response = await this.apiCall('/api/log?' + new URLSearchParams({
+                level: 'error,fatal',
+                limit: '10',
+                sort: 'desc'
+            }));
+            
+            if (response.logs && response.logs.length > 0) {
+                container.innerHTML = response.logs.map(log => `
+                    <div class="error-item">
+                        <div class="error-header">
+                            <span class="error-level ${log.level}">${log.level.toUpperCase()}</span>
+                            <span class="error-time">${this.formatRelativeTime(new Date(log.ts))}</span>
+                        </div>
+                        <div class="error-message">${this.escapeHtml(log.message)}</div>
+                        <div class="error-source">${this.escapeHtml(log.source)} • ${this.escapeHtml(log.env)}</div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="no-data">No recent errors found</div>';
+            }
+        } catch (error) {
+            document.getElementById('recent-errors-list').innerHTML = 
+                '<div class="error-state">Failed to load recent errors</div>';
+            console.error('Failed to load recent errors:', error);
+        }
+    }
+
+    // ===== SEARCH =====
+    async loadSearchProjects() {
+        try {
+            const projects = await this.apiCall('/api/projects');
+            const select = document.getElementById('search-project');
+            
+            select.innerHTML = '<option value="">All Projects</option>';
+            if (projects.projects) {
+                projects.projects.forEach(project => {
+                    select.innerHTML += `<option value="${project.id}">${this.escapeHtml(project.name)}</option>`;
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load search projects:', error);
+        }
+    }
+
+    async performSearch() {
+        try {
+            const container = document.getElementById('search-results');
+            const countElement = document.getElementById('search-results-count');
+            
+            container.innerHTML = '<div class="loading">Searching...</div>';
+            countElement.textContent = 'Searching...';
+            
+            // Gather search parameters
+            const params = new URLSearchParams();
+            
+            const projectId = document.getElementById('search-project').value;
+            const level = document.getElementById('search-level').value;
+            const env = document.getElementById('search-env').value;
+            const query = document.getElementById('search-query').value.trim();
+            
+            if (projectId) params.append('project_id', projectId);
+            if (level) params.append('level', level);
+            if (env) params.append('env', env);
+            if (query) params.append('message', query);
+            
+            params.append('limit', '50');
+            params.append('sort', 'desc');
+            
+            const response = await this.apiCall(`/api/log?${params.toString()}`);
+            
+            this.renderSearchResults(response);
+            
+        } catch (error) {
+            document.getElementById('search-results').innerHTML = 
+                '<div class="error-state">Search failed: ' + this.escapeHtml(error.message) + '</div>';
+            document.getElementById('search-results-count').textContent = 'Search failed';
+            console.error('Search failed:', error);
+        }
+    }
+
+    renderSearchResults(response) {
+        const container = document.getElementById('search-results');
+        const countElement = document.getElementById('search-results-count');
+        
+        if (response.logs && response.logs.length > 0) {
+            countElement.textContent = `Found ${response.logs.length} results`;
+            
+            container.innerHTML = response.logs.map(log => `
+                <div class="log-item">
+                    <div class="log-header">
+                        <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
+                        <span class="log-time">${new Date(log.ts).toLocaleString()}</span>
+                        <span class="log-source">${this.escapeHtml(log.source)}</span>
+                        <span class="log-env">${this.escapeHtml(log.env)}</span>
+                    </div>
+                    <div class="log-message">${this.escapeHtml(log.message)}</div>
+                    ${log.ctx_json ? `<div class="log-context"><pre>${this.escapeHtml(JSON.stringify(JSON.parse(log.ctx_json), null, 2))}</pre></div>` : ''}
+                </div>
+            `).join('');
+        } else {
+            countElement.textContent = 'No results found';
+            container.innerHTML = '<div class="no-data">No logs match your search criteria</div>';
+        }
+    }
+
+    clearSearch() {
+        document.getElementById('search-project').value = '';
+        document.getElementById('search-level').value = '';
+        document.getElementById('search-env').value = '';
+        document.getElementById('search-query').value = '';
+        
+        document.getElementById('search-results').innerHTML = `
+            <div class="search-placeholder">
+                <div class="placeholder-icon">🔍</div>
+                <p>Use the filters above to search through your logs</p>
+                <p class="placeholder-hint">Pro tip: Leave fields empty to search all values</p>
+            </div>
+        `;
+        document.getElementById('search-results-count').textContent = 'Enter search criteria above';
+    }
+
+    // ===== PROJECTS =====
+    async loadProjects() {
+        try {
+            const container = document.getElementById('projects-list');
+            container.innerHTML = '<div class="loading">Loading projects...</div>';
+            
+            const response = await this.apiCall('/api/projects');
+            
+            if (response.projects && response.projects.length > 0) {
+                container.innerHTML = response.projects.map(project => `
+                    <div class="project-card">
+                        <div class="project-header">
+                            <h4>${this.escapeHtml(project.name)}</h4>
+                            <span class="project-slug">${this.escapeHtml(project.slug)}</span>
+                        </div>
+                        <div class="project-details">
+                            <div class="project-stat">
+                                <label>Retention:</label>
+                                <span>${project.retention_days} days</span>
+                            </div>
+                            <div class="project-stat">
+                                <label>Rate Limit:</label>
+                                <span>${this.formatNumber(project.minute_cap)}/min</span>
+                            </div>
+                            <div class="project-stat">
+                                <label>Created:</label>
+                                <span>${new Date(project.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div class="project-actions">
+                            <button onclick="logger.deleteProject(${project.id}, '${this.escapeHtml(project.name)}')" class="delete-btn">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <div class="no-data-icon">📁</div>
+                        <p>No projects found</p>
+                        <p class="no-data-hint">Create your first project to start logging</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            document.getElementById('projects-list').innerHTML = 
+                '<div class="error-state">Failed to load projects</div>';
+            console.error('Failed to load projects:', error);
+        }
+    }
+
+    showNewProjectModal() {
+        document.getElementById('new-project-modal').style.display = 'flex';
+        document.getElementById('project-name').focus();
+    }
+
+    hideNewProjectModal() {
+        document.getElementById('new-project-modal').style.display = 'none';
+        document.getElementById('new-project-form').reset();
+    }
+
+    async createProject() {
+        try {
+            const formData = {
+                name: document.getElementById('project-name').value.trim(),
+                slug: document.getElementById('project-slug').value.trim(),
+                retention_days: parseInt(document.getElementById('project-retention').value),
+                minute_cap: parseInt(document.getElementById('project-rate-limit').value)
+            };
+
+            if (!this.adminToken) {
+                await this.promptForAdminToken();
+            }
+
+            const response = await this.apiCall('/admin/projects', {
+                method: 'POST',
+                body: formData
+            });
+
+            this.showToast(`Project "${formData.name}" created successfully!`, 'success');
+            this.hideNewProjectModal();
+            await this.loadProjects();
+
+            // Show API key to user
+            if (response.project?.api_key) {
+                alert(`Project created! Your API key is:\n\n${response.project.api_key}\n\nSave this key - it won't be shown again!`);
+            }
+
+        } catch (error) {
+            this.showToast('Failed to create project: ' + error.message, 'error');
+            console.error('Failed to create project:', error);
+        }
+    }
+
+    async deleteProject(projectId, projectName) {
+        if (!confirm(`Are you sure you want to delete "${projectName}"?\n\nThis will permanently delete all logs and cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            if (!this.adminToken) {
+                await this.promptForAdminToken();
+            }
+
+            await this.apiCall(`/admin/projects/${projectId}`, {
+                method: 'DELETE'
+            });
+
+            this.showToast(`Project "${projectName}" deleted successfully`, 'success');
+            await this.loadProjects();
+
+        } catch (error) {
+            this.showToast('Failed to delete project: ' + error.message, 'error');
+            console.error('Failed to delete project:', error);
+        }
+    }
+
+    // ===== ADMIN =====
+    async loadAdminData() {
+        try {
+            await Promise.all([
+                this.loadMaintenanceStatus(),
+                this.loadHealthStatus(),
+                this.loadServiceConfig()
+            ]);
+        } catch (error) {
+            console.error('Failed to load admin data:', error);
+        }
+    }
+
+    async loadMaintenanceStatus() {
+        try {
+            const container = document.getElementById('maintenance-status-section');
+            container.innerHTML = '<div class="loading">Loading maintenance status...</div>';
+
+            if (!this.adminToken) {
+                container.innerHTML = '<div class="auth-required">Admin token required</div>';
+                return;
+            }
+
+            const response = await this.apiCall('/admin/maintenance/status');
+            const { maintenance } = response;
+
+            container.innerHTML = `
+                <div class="status-item">
+                    <label>Last Run:</label>
+                    <span>${maintenance.last_run ? this.formatRelativeTime(new Date(maintenance.last_run)) : 'Never'}</span>
+                </div>
+                <div class="status-item">
+                    <label>Status:</label>
+                    <span class="status-badge ${maintenance.in_progress ? 'running' : 'idle'}">
+                        ${maintenance.in_progress ? 'Running' : 'Idle'}
+                    </span>
+                </div>
+            `;
+
+        } catch (error) {
+            document.getElementById('maintenance-status-section').innerHTML = 
+                '<div class="error-state">Failed to load maintenance status</div>';
+            console.error('Failed to load maintenance status:', error);
+        }
+    }
+
+    async loadHealthStatus() {
+        try {
+            const container = document.getElementById('health-status-section');
+            container.innerHTML = '<div class="loading">Loading health status...</div>';
+
+            const health = await this.apiCall('/api/health');
+
+            container.innerHTML = `
+                <div class="status-item">
+                    <label>Database:</label>
+                    <span class="status-badge ${health.database?.connected ? 'healthy' : 'unhealthy'}">
+                        ${health.database?.connected ? 'Connected' : 'Disconnected'}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <label>Version:</label>
+                    <span>${health.version || 'Unknown'}</span>
+                </div>
+            `;
+
+        } catch (error) {
+            document.getElementById('health-status-section').innerHTML = 
+                '<div class="error-state">Failed to load health status</div>';
+        }
+    }
+
+    async loadServiceConfig() {
+        try {
+            const container = document.getElementById('config-display');
+            container.innerHTML = '<div class="loading">Loading configuration...</div>';
+
+            const config = await this.apiCall('/config');
+
+            container.innerHTML = `
+                <div class="config-section">
+                    <h5>Service Limits</h5>
+                    <div class="config-item">
+                        <label>Max Payload:</label>
+                        <span>${this.formatBytes(config.limits?.max_payload_bytes || 0)}</span>
+                    </div>
+                    <div class="config-item">
+                        <label>Max Events per Request:</label>
+                        <span>${config.limits?.max_events_per_post || 0}</span>
+                    </div>
+                </div>
+            `;
+
+        } catch (error) {
+            document.getElementById('config-display').innerHTML = 
+                '<div class="error-state">Failed to load configuration</div>';
+        }
+    }
+
+    async triggerMaintenance() {
+        try {
+            if (!this.adminToken) {
+                await this.promptForAdminToken();
+            }
+
+            await this.apiCall('/admin/maintenance', {
+                method: 'POST'
+            });
+
+            this.showToast('Maintenance triggered successfully', 'success');
+            await this.loadMaintenanceStatus();
+
+        } catch (error) {
+            this.showToast('Failed to trigger maintenance: ' + error.message, 'error');
+        }
+    }
+
+    async triggerPurge() {
+        if (!confirm('This will permanently delete old logs based on project retention settings. Continue?')) {
+            return;
+        }
+
+        try {
+            if (!this.adminToken) {
+                await this.promptForAdminToken();
+            }
+
+            const response = await this.apiCall('/admin/purge', {
+                method: 'POST'
+            });
+
+            this.showToast(`Purge completed. Deleted ${response.deletedLogs || 0} logs.`, 'success');
+            await this.loadMaintenanceStatus();
+
+        } catch (error) {
+            this.showToast('Failed to trigger purge: ' + error.message, 'error');
+        }
+    }
+
+    async clearConfigCache() {
+        try {
+            await this.apiCall('/config/cache', {
+                method: 'DELETE'
+            });
+
+            this.showToast('Configuration cache cleared', 'success');
+            await this.loadServiceConfig();
+
+        } catch (error) {
+            this.showToast('Failed to clear cache: ' + error.message, 'error');
+        }
+    }
+
+    // ===== UTILITY METHODS =====
+    formatNumber(num) {
+        return new Intl.NumberFormat().format(num);
+    }
+
+    formatBytes(bytes) {
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        if (bytes === 0) return '0 Bytes';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    formatRelativeTime(date) {
+        const now = new Date();
+        const diff = now - date;
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) return `${days}d ago`;
+        if (hours > 0) return `${hours}h ago`;
+        if (minutes > 0) return `${minutes}m ago`;
+        return `${seconds}s ago`;
     }
 
     escapeHtml(text) {
@@ -237,18 +688,29 @@ class TeknoLogger {
         return div.innerHTML;
     }
 
-    showError(message) {
-        // Simple error notification - could be enhanced with a toast system
-        alert(`Error: ${message}`);
-    }
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (container) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span class="toast-message">${this.escapeHtml(message)}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
 
-    showSuccess(message) {
-        // Simple success notification - could be enhanced with a toast system
-        alert(`Success: ${message}`);
+            container.appendChild(toast);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
     }
 }
 
-// Initialize the application when DOM is loaded
+// Initialize the dashboard when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new TeknoLogger();
+    window.logger = new TeknoLogger();
 });
