@@ -254,6 +254,10 @@ export function generateMinuteUtc(date: Date = new Date()): number {
   return Math.floor(date.getTime() / 1000 / 60);
 }
 
+export function getCurrentTimestamp(): Date {
+  return new Date();
+}
+
 export function escapeIdentifier(identifier: string): string {
   return '`' + identifier.replace(/`/g, '``') + '`';
 }
