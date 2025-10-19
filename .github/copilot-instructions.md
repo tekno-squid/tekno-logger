@@ -34,6 +34,7 @@ import type { LogEvent } from '@/types';
 - **`src/services/`** - Core business logic (database, alerts, logging)
 - **`src/middleware/`** - Cross-cutting concerns (auth, rate limiting)
 - **`src/types/`** - Shared TypeScript definitions
+- **`public/`** - Modern web dashboard (HTML5, CSS3, vanilla JS SPA)
 
 ### Critical Integration Points
 
@@ -115,10 +116,20 @@ if (shouldRunMaintenance()) {
 
 ## 🎨 Frontend Integration
 
-### Vanilla JS SPA (`public/`)
-- **Class-based** architecture (`TeknoLogger` main class)
-- **Tab navigation** with `data-tab` attributes
-- **API calls** via fetch with proper error handling
+### Modern Dashboard (`public/`)
+- **Class-based** architecture (`TeknoLogger` main class in `app.js`)
+- **Responsive HTML5** interface (`index.html`) with tab navigation
+- **Modern CSS** design system (`styles.css`) with custom properties
+- **API integration** - complete REST client with authentication
+- **Real-time updates** - dashboard stats, search, project management
+- **Mobile-first** responsive design with professional UX
 - **No framework** - vanilla JS with modern ES6+ patterns
+
+### Key Frontend Features
+- **Tab Navigation**: Dashboard, Search, Alerts, Projects, Admin
+- **Dashboard Stats**: Real-time error rates, event counts, top fingerprints
+- **Search Interface**: Advanced filtering, pagination, time range selection
+- **Project Management**: CRUD operations with modal dialogs
+- **Admin Interface**: System health, maintenance controls, configuration
 
 Use this guide to maintain consistency with the established patterns and architectural decisions.

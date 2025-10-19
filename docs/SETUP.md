@@ -45,15 +45,21 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ### 4. Initialize Database
 ```bash
-npm run migrate
+npm run migrate:dev
 ```
 
-### 5. Create First Project
+### 5. Start Development Server
 ```bash
-# Manual SQL (replace with actual values)
-INSERT INTO projects (key, name, secret, is_active) 
-VALUES ('your-project-key', 'Your Project', 'generated-secret', 1);
+npm run dev
 ```
+
+The service will be available at `http://localhost:3000` with a modern web dashboard.
+
+### 6. Access Dashboard
+- **Dashboard**: `http://localhost:3000` - View real-time stats and recent errors
+- **Search**: Advanced log filtering and pagination
+- **Projects**: Manage API keys and project settings  
+- **Admin**: System health, maintenance controls (requires admin token)
 
 ## 🔧 External Services (Optional)
 
@@ -108,8 +114,12 @@ console.log('X-Signature:', signature);
 - [ ] Secure secrets generated (32+ characters)
 - [ ] Environment variables configured
 - [ ] Database migrations executed
-- [ ] First project created
 - [ ] Test log submission works
+- [ ] Web dashboard accessible and functioning
+- [ ] Admin interface accessible with token
+- [ ] Project management working via dashboard
+- [ ] Search functionality tested
+- [ ] Mobile responsiveness verified
 - [ ] Discord webhook tested (if using)
 - [ ] Rate limits configured appropriately
 
@@ -129,3 +139,13 @@ console.log('X-Signature:', signature);
 - Check IP extraction in proxy setup
 - Verify database counter table exists
 - Adjust limits in environment variables
+
+**Dashboard not loading**
+- Ensure static file serving is enabled
+- Check browser console for JavaScript errors
+- Verify API endpoints are accessible
+
+**Admin interface not accessible**
+- Verify ADMIN_TOKEN environment variable is set
+- Check admin token in browser localStorage
+- Ensure admin endpoints are responding
