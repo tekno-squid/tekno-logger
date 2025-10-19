@@ -26,11 +26,19 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ### 3. Deploy Database Schema
-Use GitHub Actions workflow:
-1. **Configure secrets**: `PROD_DB_HOST`, `PROD_DB_NAME`, `PROD_DB_USER`, `PROD_DB_PASSWORD`  
-2. **Run workflow**: Actions → "Deploy Production Database"
-3. **First run**: `dry_run: true` to test
-4. **Deploy**: `dry_run: false, force_migration: true`
+**GitHub Actions Workflow:**
+1. **Configure GitHub secrets** (Settings → Secrets → Actions):
+   - `PROD_DB_HOST` - Database host (e.g., `mysql.yourdomain.com`)
+   - `PROD_DB_NAME` - Database name (e.g., `tekno_logger`) 
+   - `PROD_DB_USER` - Database username
+   - `PROD_DB_PASSWORD` - Database password
+
+2. **Run deployment workflow**:
+   - Go to **Actions** tab → **Deploy Production Database**
+   - **First run**: `dry_run: true` to test configuration
+   - **Deploy**: `dry_run: false, force_migration: true`
+
+**Creates tables**: `projects`, `logs`, `project_minute_counters`, `maintenance_log`
 
 ## 🔧 Local Development
 

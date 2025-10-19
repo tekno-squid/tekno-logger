@@ -33,7 +33,7 @@ npm run dev
 
 ### Production Deployment
 1. **Deploy to Render**: Connect GitHub repository, configure environment variables
-2. **Deploy database**: Use GitHub Actions workflow (see [docs/DATABASE_DEPLOYMENT.md](docs/DATABASE_DEPLOYMENT.md))
+2. **Deploy database**: Use GitHub Actions workflow (see [docs/SETUP.md](docs/SETUP.md))
 3. **Integrate**: Add logging to your projects (see [docs/INTEGRATION.md](docs/INTEGRATION.md))
 
 **📖 Complete setup guide: [docs/SETUP.md](docs/SETUP.md)**
