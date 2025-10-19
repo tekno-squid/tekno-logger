@@ -1,0 +1,189 @@
+name: Deploy Production Database
+
+# Manual trigger only - no automatic deployments
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (show what would be executed without making changes)'
+        required: false
+        type: boolean
+        default: true
+      force_migration:
+        description: 'Force migration even if database appears populated'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  deploy-database:
+    name: Deploy Database Schema (Production)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup production environment variables
+        run: |
+          echo "Setting up production environment"
+          
+          # Production database variables  
+          echo "DB_HOST=${{ secrets.PROD_DB_HOST }}" >> $GITHUB_ENV
+          echo "DB_NAME=${{ secrets.PROD_DB_NAME }}" >> $GITHUB_ENV
+          echo "DB_USER=${{ secrets.PROD_DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASS=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
+          
+          # Required environment variables for migration
+          echo "NODE_ENV=production" >> $GITHUB_ENV
+          echo "PORT=3000" >> $GITHUB_ENV
+          echo "HMAC_SECRET=dummy-secret-for-migration" >> $GITHUB_ENV
+          echo "ADMIN_TOKEN=dummy-token-for-migration" >> $GITHUB_ENV
+
+      - name: Test database connection
+        run: |
+          echo "Testing database connection..."
+          node -e "
+            const mysql = require('mysql2/promise');
+            (async () => {
+              try {
+                const connection = await mysql.createConnection({
+                  host: process.env.DB_HOST,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASS,
+                  database: process.env.DB_NAME
+                });
+                console.log('✅ Database connection successful');
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Database connection failed:', error.message);
+                process.exit(1);
+              }
+            })();
+          "
+
+      - name: Check existing database state
+        if: ${{ !github.event.inputs.force_migration }}
+        run: |
+          echo "Checking if database has existing tables..."
+          node -e "
+            const mysql = require('mysql2/promise');
+            (async () => {
+              try {
+                const connection = await mysql.createConnection({
+                  host: process.env.DB_HOST,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASS,
+                  database: process.env.DB_NAME
+                });
+                
+                const [tables] = await connection.execute('SHOW TABLES');
+                if (tables.length > 0) {
+                  console.log('⚠️ Database contains existing tables:');
+                  tables.forEach(table => console.log('  -', Object.values(table)[0]));
+                  console.log('');
+                  console.log('To proceed with migration on non-empty database, set force_migration: true');
+                  process.exit(1);
+                }
+                
+                console.log('✅ Database is empty, ready for migration');
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Failed to check database state:', error.message);
+                process.exit(1);
+              }
+            })();
+          "
+
+      - name: Run database migration (dry run)
+        if: ${{ github.event.inputs.dry_run }}
+        run: |
+          echo "🔍 DRY RUN MODE - No changes will be made"
+          echo ""
+          echo "Would execute migration with the following configuration:"
+          echo "- Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
+          echo "- User: ${{ env.DB_USER }}" 
+          echo "- Force migration: ${{ github.event.inputs.force_migration }}"
+          echo ""
+          echo "To execute the actual migration, set dry_run: false"
+
+      - name: Run database migration
+        if: ${{ !github.event.inputs.dry_run }}
+        run: |
+          echo "🚀 Executing database migration..."
+          echo "Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
+          echo "User: ${{ env.DB_USER }}"
+          echo ""
+          
+          # Run the migration
+          npm run migrate
+
+      - name: Verify migration success
+        if: ${{ !github.event.inputs.dry_run }}
+        run: |
+          echo "✅ Verifying migration was successful..."
+          node -e "
+            const mysql = require('mysql2/promise');
+            (async () => {
+              try {
+                const connection = await mysql.createConnection({
+                  host: process.env.DB_HOST,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASS,
+                  database: process.env.DB_NAME
+                });
+                
+                const [tables] = await connection.execute('SHOW TABLES');
+                const expectedTables = ['projects', 'logs', 'project_minute_counters', 'maintenance_log'];
+                
+                console.log('📊 Database tables created:');
+                tables.forEach(table => console.log('  ✓', Object.values(table)[0]));
+                
+                const missingTables = expectedTables.filter(table => 
+                  !tables.some(row => Object.values(row)[0] === table)
+                );
+                
+                if (missingTables.length > 0) {
+                  console.log('❌ Missing expected tables:', missingTables);
+                  process.exit(1);
+                }
+                
+                console.log('✅ All expected tables created successfully');
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Migration verification failed:', error.message);
+                process.exit(1);
+              }
+            })();
+          "
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Database Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database**: ${{ env.DB_HOST }}/${{ env.DB_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Migration**: ${{ github.event.inputs.force_migration }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "To execute the actual migration:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Run this workflow again with \`dry_run: false\`" >> $GITHUB_STEP_SUMMARY
+            echo "2. Monitor the deployment in your Render dashboard" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Deployment Complete" >> $GITHUB_STEP_SUMMARY
+            echo "Your Render service should now start successfully!" >> $GITHUB_STEP_SUMMARY
+          fi
