@@ -49,8 +49,11 @@ class TeknoLogger {
 
     async loadTabData(tabName) {
         try {
+            console.log('Loading tab:', tabName, 'Admin token present:', !!this.adminToken);
+            
             // Check authentication for admin-only tabs
             if ((tabName === 'projects' || tabName === 'admin') && !this.adminToken) {
+                console.log('Need authentication for tab:', tabName);
                 await this.promptForAdminToken();
             }
 
@@ -69,6 +72,7 @@ class TeknoLogger {
                     break;
             }
         } catch (error) {
+            console.log('Error in loadTabData:', error.message);
             if (error.message === 'Login cancelled') {
                 // User cancelled login, switch back to dashboard
                 const dashboardTab = document.querySelector('[data-tab="dashboard"]');
@@ -206,18 +210,29 @@ class TeknoLogger {
     // ===== LOGIN MODAL FUNCTIONALITY =====
     
     async promptForAdminToken() {
+        console.log('promptForAdminToken called');
         return new Promise((resolve, reject) => {
             this.showLoginModal(resolve, reject);
         });
     }
 
     showLoginModal(resolve = null, reject = null) {
+        console.log('showLoginModal called with resolve:', !!resolve, 'reject:', !!reject);
         this.loginResolve = resolve;
         this.loginReject = reject;
         
         const modal = document.getElementById('login-modal-overlay');
         const form = document.getElementById('login-form');
         const errorDiv = document.getElementById('login-error');
+        
+        console.log('Modal element found:', !!modal);
+        console.log('Form element found:', !!form);
+        console.log('Error div found:', !!errorDiv);
+        
+        if (!modal) {
+            console.error('Modal element not found!');
+            return;
+        }
         
         // Clear previous state
         form.reset();
@@ -228,9 +243,12 @@ class TeknoLogger {
         modal.classList.add('visible');
         document.body.style.overflow = 'hidden';
         
+        console.log('Modal classes after adding visible:', modal.className);
+        
         // Add show class for animation after display is set
         requestAnimationFrame(() => {
             modal.classList.add('show');
+            console.log('Modal classes after adding show:', modal.className);
         });
         
         // Focus on token input
