@@ -22,31 +22,34 @@ A minimal overflow logging service designed to act as a backup when primary logg
 ### Prerequisites
 
 - Node.js 18+
-- MySQL database (local or DreamHost)
+- MySQL database (DreamHost recommended)
 - Git
+
+### Setup
+
+**📖 See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions including:**
+- Database creation and configuration
+- Environment variable setup
+- Security secret generation
+- External service integration (Discord, Sentry)
 
 ### Local Development
 
-1. **Clone and install dependencies:**
+1. **Clone and setup:**
 ```bash
 git clone <your-repo-url>
 cd tekno-logger
 npm install
+cp .env.template .env
+# Edit .env with your configuration
 ```
 
-2. **Setup environment:**
-```bash
-cp .env.example .env
-# Edit .env with your database credentials and secrets
-```
-
-3. **Initialize database:**
+2. **Initialize database:**
 ```bash
 npm run migrate:dev
-npm run seed:dev
 ```
 
-4. **Start development server:**
+3. **Start development server:**
 ```bash
 npm run dev
 ```
@@ -231,15 +234,16 @@ The service maintains itself automatically during normal operation. Manual admin
 tekno-logger/
 ├── src/
 │   ├── routes/          # API endpoints
-│   ├── services/        # Business logic
+│   ├── services/        # Business logic  
 │   ├── middleware/      # Authentication, rate limiting
 │   ├── types/          # TypeScript definitions
 │   └── utils/          # Helper functions
 ├── public/             # Static web UI files
 ├── migrations/         # Database schema files
 ├── scripts/           # Maintenance and setup scripts
-├── tests/             # Test files
-└── docs/              # Documentation
+├── docs/              # Documentation
+│   └── SETUP.md       # Setup and deployment guide
+└── tests/             # Test files
 ```
 
 ## 📋 Development Phases
@@ -252,13 +256,14 @@ tekno-logger/
 - ✅ Migration runner with version tracking (`scripts/migrate.ts`)
 - ✅ Development environment setup (`.env`, tooling)
 
-### 🔄 Phase 2: Core API (IN PROGRESS)
+### 🔄 Phase 2: Core API (75% COMPLETE)
 **HTTP Server & Authentication**
-- [ ] Fastify application factory with middleware setup
-- [ ] HMAC authentication middleware (`src/middleware/auth.ts`)
-- [ ] Rate limiting middleware (`src/middleware/rateLimit.ts`)
-- [ ] Core `/log` endpoint with bulk processing (`src/routes/logs.ts`)
-- [ ] System health endpoints (`src/routes/system.ts`)
+- ✅ Fastify application factory with middleware setup (`src/app.ts`)
+- ✅ HMAC authentication middleware (`src/middleware/auth.ts`)
+- ✅ Rate limiting middleware (`src/middleware/rateLimit.ts`)
+- 🔄 Core `/log` endpoint with bulk processing (`src/routes/logs.ts`) - **IN PROGRESS**
+- ⏳ System health endpoints (`src/routes/system.ts`)
+- ⏳ Server entry point (`src/index.ts`)
 
 ### ⏳ Phase 3: System Endpoints
 **Administration & Monitoring**
