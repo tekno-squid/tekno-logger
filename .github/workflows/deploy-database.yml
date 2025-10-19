@@ -1,17 +1,9 @@
-name: Deploy Database Schema
+name: Deploy Production Database
 
 # Manual trigger only - no automatic deployments
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
       dry_run:
         description: 'Dry run (show what would be executed without making changes)'
         required: false
@@ -25,13 +17,11 @@ on:
 
 jobs:
   deploy-database:
-    name: Deploy Database Schema
+    name: Deploy Database Schema (Production)
     runs-on: ubuntu-latest
     
-    environment: ${{ github.event.inputs.environment }}
-    
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Setup Node.js
@@ -43,38 +33,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Build project
-        run: npm run build
-      
-      - name: Setup environment variables
+      - name: Setup production environment variables
         run: |
-          echo "Setting up environment for ${{ github.event.inputs.environment }}"
+          echo "Setting up production environment"
           
-          # Set environment-specific variables
-          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
-            echo "DB_HOST=${{ secrets.PROD_DB_HOST }}" >> $GITHUB_ENV
-            echo "DB_NAME=${{ secrets.PROD_DB_NAME }}" >> $GITHUB_ENV
-            echo "DB_USER=${{ secrets.PROD_DB_USER }}" >> $GITHUB_ENV
-            echo "DB_PASS=${{ secrets.PROD_DB_PASS }}" >> $GITHUB_ENV
-          else
-            echo "DB_HOST=${{ secrets.STAGING_DB_HOST }}" >> $GITHUB_ENV
-            echo "DB_NAME=${{ secrets.STAGING_DB_NAME }}" >> $GITHUB_ENV
-            echo "DB_USER=${{ secrets.STAGING_DB_USER }}" >> $GITHUB_ENV
-            echo "DB_PASS=${{ secrets.STAGING_DB_PASS }}" >> $GITHUB_ENV
-          fi
+          # Production database variables  
+          echo "DB_HOST=${{ secrets.PROD_DB_HOST }}" >> $GITHUB_ENV
+          echo "DB_NAME=${{ secrets.PROD_DB_NAME }}" >> $GITHUB_ENV
+          echo "DB_USER=${{ secrets.PROD_DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASS=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
           
-          # Common environment variables
-          echo "NODE_ENV=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+          # Required environment variables for migration
+          echo "NODE_ENV=production" >> $GITHUB_ENV
           echo "PORT=3000" >> $GITHUB_ENV
           echo "HMAC_SECRET=dummy-secret-for-migration" >> $GITHUB_ENV
           echo "ADMIN_TOKEN=dummy-token-for-migration" >> $GITHUB_ENV
-      
+
       - name: Test database connection
         run: |
           echo "Testing database connection..."
           node -e "
             const mysql = require('mysql2/promise');
-            async function testConnection() {
+            (async () => {
               try {
                 const connection = await mysql.createConnection({
                   host: process.env.DB_HOST,
@@ -82,25 +62,22 @@ jobs:
                   password: process.env.DB_PASS,
                   database: process.env.DB_NAME
                 });
-                await connection.ping();
                 console.log('✅ Database connection successful');
                 await connection.end();
               } catch (error) {
                 console.error('❌ Database connection failed:', error.message);
                 process.exit(1);
               }
-            }
-            testConnection();
+            })();
           "
-      
+
       - name: Check existing database state
-        id: db_check
+        if: ${{ !github.event.inputs.force_migration }}
         run: |
-          echo "Checking existing database state..."
-          
-          TABLES_COUNT=$(node -e "
+          echo "Checking if database has existing tables..."
+          node -e "
             const mysql = require('mysql2/promise');
-            async function checkTables() {
+            (async () => {
               try {
                 const connection = await mysql.createConnection({
                   host: process.env.DB_HOST,
@@ -109,131 +86,104 @@ jobs:
                   database: process.env.DB_NAME
                 });
                 
-                const [rows] = await connection.execute('SHOW TABLES');
-                console.log(rows.length);
-                await connection.end();
-              } catch (error) {
-                console.log('0');
-              }
-            }
-            checkTables();
-          ")
-          
-          echo "tables_count=$TABLES_COUNT" >> $GITHUB_OUTPUT
-          
-          if [ "$TABLES_COUNT" -gt 0 ]; then
-            echo "📊 Found $TABLES_COUNT existing tables in database"
-            echo "database_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "📭 Database appears to be empty"
-            echo "database_exists=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Check migration safety
-        if: steps.db_check.outputs.database_exists == 'true' && github.event.inputs.force_migration != 'true'
-        run: |
-          echo "⚠️ Warning: Database contains existing tables!"
-          echo "Tables found: ${{ steps.db_check.outputs.tables_count }}"
-          echo ""
-          echo "To proceed with migration on a populated database, re-run this workflow with 'force_migration' set to true."
-          echo "This is a safety measure to prevent accidental data loss."
-          exit 1
-      
-      - name: Dry run - Show migration plan
-        if: github.event.inputs.dry_run == 'true'
-        run: |
-          echo "🔍 DRY RUN MODE - No changes will be made"
-          echo "Environment: ${{ github.event.inputs.environment }}"
-          echo "Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
-          echo "User: ${{ env.DB_USER }}"
-          echo "Force migration: ${{ github.event.inputs.force_migration }}"
-          echo "Database has existing tables: ${{ steps.db_check.outputs.database_exists }}"
-          echo ""
-          echo "Migration files that would be executed:"
-          ls -la migrations/
-          echo ""
-          echo "To execute these migrations, re-run this workflow with 'dry_run' set to false."
-      
-      - name: Execute database migrations
-        if: github.event.inputs.dry_run != 'true'
-        run: |
-          echo "🚀 Executing database migrations..."
-          echo "Environment: ${{ github.event.inputs.environment }}"
-          echo "Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
-          echo ""
-          
-          # Run migrations using the built script
-          node dist/scripts/migrate.js
-          
-          echo "✅ Database migration completed successfully!"
-      
-      - name: Verify migration success
-        if: github.event.inputs.dry_run != 'true'
-        run: |
-          echo "🔍 Verifying migration success..."
-          
-          # Check that essential tables exist
-          node -e "
-            const mysql = require('mysql2/promise');
-            async function verifyTables() {
-              const connection = await mysql.createConnection({
-                host: process.env.DB_HOST,
-                user: process.env.DB_USER,
-                password: process.env.DB_PASS,
-                database: process.env.DB_NAME
-              });
-              
-              const requiredTables = ['projects', 'logs', 'project_minute_counters', 'fingerprint_trackers', 'maintenance_state', 'schema_migrations'];
-              
-              for (const table of requiredTables) {
-                try {
-                  await connection.execute(\`DESCRIBE \${table}\`);
-                  console.log('✅ Table exists:', table);
-                } catch (error) {
-                  console.error('❌ Missing table:', table);
+                const [tables] = await connection.execute('SHOW TABLES');
+                if (tables.length > 0) {
+                  console.log('⚠️ Database contains existing tables:');
+                  tables.forEach(table => console.log('  -', Object.values(table)[0]));
+                  console.log('');
+                  console.log('To proceed with migration on non-empty database, set force_migration: true');
                   process.exit(1);
                 }
+                
+                console.log('✅ Database is empty, ready for migration');
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Failed to check database state:', error.message);
+                process.exit(1);
               }
-              
-              // Check migration tracking
-              const [migrations] = await connection.execute('SELECT COUNT(*) as count FROM schema_migrations');
-              console.log('📊 Migrations executed:', migrations[0].count);
-              
-              await connection.end();
-              console.log('🎉 Database verification completed successfully!');
-            }
-            verifyTables();
+            })();
           "
-      
-      - name: Generate deployment summary
-        if: github.event.inputs.dry_run != 'true'
+
+      - name: Run database migration (dry run)
+        if: ${{ github.event.inputs.dry_run }}
         run: |
-          echo "## 🎉 Database Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Database**: ${{ env.DB_HOST }}/${{ env.DB_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Migration Status" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Database schema deployed successfully" >> $GITHUB_STEP_SUMMARY
-          echo "✅ All required tables created" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Migration tracking initialized" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Verify application connectivity" >> $GITHUB_STEP_SUMMARY
-          echo "2. Create initial project via admin interface" >> $GITHUB_STEP_SUMMARY
-          echo "3. Test log ingestion" >> $GITHUB_STEP_SUMMARY
-      
-      - name: Notify on failure
-        if: failure()
+          echo "🔍 DRY RUN MODE - No changes will be made"
+          echo ""
+          echo "Would execute migration with the following configuration:"
+          echo "- Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
+          echo "- User: ${{ env.DB_USER }}" 
+          echo "- Force migration: ${{ github.event.inputs.force_migration }}"
+          echo ""
+          echo "To execute the actual migration, set dry_run: false"
+
+      - name: Run database migration
+        if: ${{ !github.event.inputs.dry_run }}
         run: |
-          echo "## ❌ Database Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Executing database migration..."
+          echo "Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
+          echo "User: ${{ env.DB_USER }}"
+          echo ""
+          
+          # Run the migration
+          npm run migrate
+
+      - name: Verify migration success
+        if: ${{ !github.event.inputs.dry_run }}
+        run: |
+          echo "✅ Verifying migration was successful..."
+          node -e "
+            const mysql = require('mysql2/promise');
+            (async () => {
+              try {
+                const connection = await mysql.createConnection({
+                  host: process.env.DB_HOST,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASS,
+                  database: process.env.DB_NAME
+                });
+                
+                const [tables] = await connection.execute('SHOW TABLES');
+                const expectedTables = ['projects', 'logs', 'project_minute_counters', 'maintenance_log'];
+                
+                console.log('📊 Database tables created:');
+                tables.forEach(table => console.log('  ✓', Object.values(table)[0]));
+                
+                const missingTables = expectedTables.filter(table => 
+                  !tables.some(row => Object.values(row)[0] === table)
+                );
+                
+                if (missingTables.length > 0) {
+                  console.log('❌ Missing expected tables:', missingTables);
+                  process.exit(1);
+                }
+                
+                console.log('✅ All expected tables created successfully');
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Migration verification failed:', error.message);
+                process.exit(1);
+              }
+            })();
+          "
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Database Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
           echo "- **Database**: ${{ env.DB_HOST }}/${{ env.DB_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Migration**: ${{ github.event.inputs.force_migration }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Please check the workflow logs for detailed error information." >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "To execute the actual migration:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Run this workflow again with \`dry_run: false\`" >> $GITHUB_STEP_SUMMARY
+            echo "2. Monitor the deployment in your Render dashboard" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Deployment Complete" >> $GITHUB_STEP_SUMMARY
+            echo "Your Render service should now start successfully!" >> $GITHUB_STEP_SUMMARY
+          fi
