@@ -1,102 +1,39 @@
-# Database Deployment with GitHub Actions
-
-This guide explains how to set up and use the manual database deployment workflow.
+# Database Deployment
 
 ## 🎯 Overview
-
-The database deployment workflow allows you to:
-- **Manually deploy** database schema to staging or production
-- **Dry run** migrations to see what would be executed
-- **Safety checks** to prevent accidental data loss
-- **Verification** that all tables are created correctly
+Deploy database schema to production using GitHub Actions workflow.
 
 ## 🔧 Setup
-
-### 1. Configure GitHub Secrets
-
-You need to add database connection secrets to your GitHub repository:
-
-**For Production Environment:**
-- `PROD_DB_HOST` - Production database host (e.g., `mysql.yourdomain.com`)
-- `PROD_DB_NAME` - Production database name (e.g., `tekno_logger`)
-- `PROD_DB_USER` - Production database username
-- `PROD_DB_PASS` - Production database password
-
-**For Staging Environment:**
-- `STAGING_DB_HOST` - Staging database host
-- `STAGING_DB_NAME` - Staging database name  
-- `STAGING_DB_USER` - Staging database username
-- `STAGING_DB_PASS` - Staging database password
-
-### 2. Add Secrets to GitHub
-
-1. Go to your repository on GitHub
-2. Click **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Add each secret with the exact names above
-
-### 3. Create Environment Protection (Optional)
-
-For production safety, create protected environments:
-
-1. Go to **Settings** → **Environments**
-2. Create `production` environment
-3. Add protection rules:
-   - **Required reviewers** (yourself or team)
-   - **Deployment branches** (only `main` or `master`)
+Add these secrets to GitHub repository (Settings → Secrets → Actions):
+- `PROD_DB_HOST` - Database host (e.g., `mysql.yourdomain.com`)
+- `PROD_DB_NAME` - Database name (e.g., `tekno_logger`)
+- `PROD_DB_USER` - Database username  
+- `PROD_DB_PASSWORD` - Database password
 
 ## 🚀 Usage
 
-### Running the Workflow
+### Deploy Database Schema
+1. Go to **Actions** tab → **Deploy Production Database**
+2. Click **Run workflow**
+3. **First run**: `dry_run: true` to test configuration
+4. **Deploy**: `dry_run: false, force_migration: true`
 
-1. Go to **Actions** tab in your GitHub repository
-2. Click **Deploy Database Schema** workflow
-3. Click **Run workflow**
-4. Configure options:
-   - **Environment**: `staging` or `production`
-   - **Dry run**: `true` (recommended first) or `false`
-   - **Force migration**: `false` (safety) or `true`
-
-### Recommended Deployment Process
-
-**Step 1: Dry Run**
-```
-Environment: staging
-Dry run: true
-Force migration: false
-```
-This shows you what would be executed without making changes.
-
-**Step 2: Deploy to Staging**
-```
-Environment: staging  
-Dry run: false
-Force migration: false (or true if database has tables)
-```
-
-**Step 3: Deploy to Production**
-```
-Environment: production
-Dry run: false
-Force migration: false (or true if database has tables)
-```
+### Options
+- **dry_run**: Show what would be executed without changes
+- **force_migration**: Required if database has existing tables
 
 ## 🛡️ Safety Features
+- **Connection testing** before migration
+- **Dry run mode** to preview changes  
+- **Table verification** after deployment
+- **Force flag** prevents accidental overwrites
 
-### Existing Database Protection
-- Workflow checks if database has existing tables
-- Requires `force_migration: true` to proceed with populated database
-- Prevents accidental data loss
-
-### Dry Run Mode
-- Shows migration plan without executing
-- Lists all migration files to be run
-- Displays database connection info (without passwords)
-
-### Verification Steps
-- Tests database connection before migration
-- Verifies all required tables exist after migration
-- Checks migration tracking table
+## ✅ Expected Result
+Creates these tables:
+- `projects` - Project management
+- `logs` - Log storage
+- `project_minute_counters` - Rate limiting
+- `maintenance_log` - System maintenance
 
 ## 📊 What Gets Deployed
 

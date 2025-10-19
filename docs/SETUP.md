@@ -1,20 +1,13 @@
 # Setup Guide
 
-## 🚀 Quick Setup
+## 🎯 Quick Deployment
 
-### 1. Database (Required)
-**DreamHost MySQL** or any MySQL 8.0+
+### 1. Deploy to Render
+1. **Connect GitHub repository** to Render
+2. **Configure environment variables** (see below)
+3. **Deploy** - Render handles build and start automatically
 
-```bash
-# Create database and user
-CREATE DATABASE tekno_logger;
-CREATE USER 'logger_user'@'%' IDENTIFIED BY 'your_secure_password';
-GRANT ALL PRIVILEGES ON tekno_logger.* TO 'logger_user'@'%';
-```
-
-### 2. Environment Variables
-Copy `.env.template` to `.env` and configure:
-
+### 2. Required Environment Variables
 ```bash
 # Database (Required)
 DB_HOST=mysql.yourdomain.com
@@ -22,32 +15,72 @@ DB_NAME=tekno_logger
 DB_USER=logger_user
 DB_PASS=your_secure_password
 
-# Security Secrets (Required)
+# Security Secrets (Required - generate 32+ char strings)
 HMAC_SECRET=generate_32_char_random_string_here
 ADMIN_TOKEN=generate_32_char_random_token_here
-
-# System Limits (Defaults provided)
-DEFAULT_RETENTION_DAYS=30
-MAX_PAYLOAD_BYTES=524288
-MAX_EVENTS_PER_POST=250
-RATE_LIMIT_PER_MINUTE=5000
-RATE_LIMIT_PER_IP=100
 ```
 
-### 3. Generate Secrets
+**Generate secrets:**
 ```bash
-# Generate HMAC secret
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-# Generate admin token  
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 4. Initialize Database
+### 3. Deploy Database Schema
+Use GitHub Actions workflow:
+1. **Configure secrets**: `PROD_DB_HOST`, `PROD_DB_NAME`, `PROD_DB_USER`, `PROD_DB_PASSWORD`  
+2. **Run workflow**: Actions → "Deploy Production Database"
+3. **First run**: `dry_run: true` to test
+4. **Deploy**: `dry_run: false, force_migration: true`
 
-**Option A: GitHub Actions (Recommended for Production)**
+## 🔧 Local Development
+
+### Setup
 ```bash
-# See docs/DATABASE_DEPLOYMENT.md for detailed instructions
+git clone <your-repo-url>
+cd tekno-logger
+npm install
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+### Database
+```bash
+# Option 1: Use production database
+npm run migrate:dev
+
+# Option 2: Local MySQL
+CREATE DATABASE tekno_logger;
+CREATE USER 'logger_user'@'%' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON tekno_logger.* TO 'logger_user'@'%';
+```
+
+### Run
+```bash
+npm run dev  # Development with hot reload
+npm start    # Production mode
+```
+
+## 📋 System Limits (Optional)
+These have sensible defaults but can be customized:
+```bash
+DEFAULT_RETENTION_DAYS=3      # Days to keep logs
+MAX_PAYLOAD_BYTES=524288      # 512KB max request size  
+MAX_EVENTS_PER_POST=250       # Events per request
+RATE_LIMIT_PER_MINUTE=5000    # Project rate limit
+RATE_LIMIT_PER_IP=100         # IP rate limit
+```
+
+## 🔗 Integration
+See [INTEGRATION.md](INTEGRATION.md) for adding logging to your applications.
+
+## 🌐 External Services (Optional)
+```bash
+# Discord alerts for error spikes
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+
+# Sentry integration  
+SENTRY_DSN=https://...
+```
 # 1. Configure GitHub secrets for database connection
 # 2. Run "Deploy Database Schema" workflow manually
 # 3. Start with dry_run: true to verify configuration

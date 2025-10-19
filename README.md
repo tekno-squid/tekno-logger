@@ -20,77 +20,23 @@ A minimal overflow logging service designed to act as a backup when primary logg
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js 18+
-- MySQL database (DreamHost recommended)
-- Git
-
-### Setup
-
-**📖 See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions including:**
-- Database creation and configuration
-- Environment variable setup
-- Security secret generation
-- External service integration (Discord, Sentry)
-
 ### Local Development
-
-1. **Clone and setup:**
 ```bash
 git clone <your-repo-url>
 cd tekno-logger
 npm install
-cp .env.template .env
+cp .env.example .env
 # Edit .env with your configuration
-```
-
-2. **Initialize database:**
-```bash
 npm run migrate:dev
-```
-
-3. **Start development server:**
-```bash
 npm run dev
 ```
 
-The service will be available at `http://localhost:3000`
+### Production Deployment
+1. **Deploy to Render**: Connect GitHub repository, configure environment variables
+2. **Deploy database**: Use GitHub Actions workflow (see [docs/DATABASE_DEPLOYMENT.md](docs/DATABASE_DEPLOYMENT.md))
+3. **Integrate**: Add logging to your projects (see [docs/INTEGRATION.md](docs/INTEGRATION.md))
 
-## 📦 Deployment
-
-### Render Deployment
-
-1. **Connect repository** to Render
-2. **Configure environment variables** in Render dashboard
-3. **Deploy** using the provided `render.yaml` configuration
-
-See the deployment section below for setup instructions.
-
-### Environment Variables
-
-Required environment variables:
-
-```bash
-# Server
-PORT=3000
-NODE_ENV=production
-
-# Database
-DB_HOST=mysql.example.com
-DB_NAME=your_database
-DB_USER=your_username
-DB_PASS=your_password
-
-# Security
-HMAC_SECRET=your-32-char-secret
-ADMIN_TOKEN=your-admin-token
-
-# Limits
-DEFAULT_RETENTION_DAYS=3
-MAX_PAYLOAD_BYTES=524288
-MAX_EVENTS_PER_POST=250
-```
+**📖 Complete setup guide: [docs/SETUP.md](docs/SETUP.md)**
 
 ## 🔌 API Reference
 
