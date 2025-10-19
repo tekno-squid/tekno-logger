@@ -212,8 +212,12 @@ npm run maintain     # Trigger maintenance tasks
 
 3. **Initialize**
    ```bash
+   # Option 1: GitHub Actions (Recommended)
+   # Use "Deploy Database Schema" workflow in GitHub Actions
+   # See docs/DATABASE_DEPLOYMENT.md for setup
+   
+   # Option 2: Manual via Render console
    npm run migrate  # Create database tables
-   npm run seed     # Create initial project
    ```
 
 ### Environment Variables

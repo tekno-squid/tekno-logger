@@ -44,8 +44,24 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ### 4. Initialize Database
+
+**Option A: GitHub Actions (Recommended for Production)**
+```bash
+# See docs/DATABASE_DEPLOYMENT.md for detailed instructions
+# 1. Configure GitHub secrets for database connection
+# 2. Run "Deploy Database Schema" workflow manually
+# 3. Start with dry_run: true to verify configuration
+```
+
+**Option B: Local Development**
 ```bash
 npm run migrate:dev
+```
+
+**Option C: Manual Production Setup**
+```bash
+# Via Render console or SSH access
+npm run migrate
 ```
 
 ### 5. Start Development Server
