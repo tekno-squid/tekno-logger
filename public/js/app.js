@@ -15,6 +15,7 @@ class TeknoLogger {
         try {
             this.setupTabs();
             this.setupEventListeners();
+            this.updateLogoutButtonVisibility();
             await this.checkServiceHealth();
             await this.loadDashboard();
         } catch (error) {
@@ -48,6 +49,11 @@ class TeknoLogger {
 
     async loadTabData(tabName) {
         try {
+            // Check authentication for admin-only tabs
+            if ((tabName === 'projects' || tabName === 'admin') && !this.adminToken) {
+                await this.promptForAdminToken();
+            }
+
             switch (tabName) {
                 case 'dashboard':
                     await this.loadDashboard();
@@ -63,6 +69,14 @@ class TeknoLogger {
                     break;
             }
         } catch (error) {
+            if (error.message === 'Login cancelled') {
+                // User cancelled login, switch back to dashboard
+                const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+                if (dashboardTab) {
+                    dashboardTab.click();
+                }
+                return;
+            }
             this.showToast(`Failed to load ${tabName} data`, 'error');
             console.error(`Failed to load ${tabName}:`, error);
         }
@@ -120,6 +134,22 @@ class TeknoLogger {
             document.getElementById('project-slug').value = slug;
         });
 
+        // Login modal functionality
+        document.getElementById('login-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin();
+        });
+
+        document.getElementById('login-modal-overlay')?.addEventListener('click', (e) => {
+            if (e.target.id === 'login-modal-overlay') {
+                this.hideLoginModal();
+            }
+        });
+
+        document.getElementById('logout-btn')?.addEventListener('click', () => {
+            this.logout();
+        });
+
         // Admin functionality
         document.getElementById('trigger-maintenance')?.addEventListener('click', () => {
             this.triggerMaintenance();
@@ -173,13 +203,124 @@ class TeknoLogger {
         return response.json();
     }
 
+    // ===== LOGIN MODAL FUNCTIONALITY =====
+    
     async promptForAdminToken() {
-        const token = prompt('Please enter the admin token:');
-        if (token) {
-            this.adminToken = token;
-            localStorage.setItem('tekno-logger-admin-token', token);
-        } else {
-            throw new Error('Admin token required');
+        return new Promise((resolve, reject) => {
+            this.showLoginModal(resolve, reject);
+        });
+    }
+
+    showLoginModal(resolve = null, reject = null) {
+        this.loginResolve = resolve;
+        this.loginReject = reject;
+        
+        const modal = document.getElementById('login-modal-overlay');
+        const form = document.getElementById('login-form');
+        const errorDiv = document.getElementById('login-error');
+        
+        // Clear previous state
+        form.reset();
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+        
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        // Focus on token input
+        setTimeout(() => {
+            document.getElementById('admin-token').focus();
+        }, 100);
+    }
+
+    hideLoginModal() {
+        const modal = document.getElementById('login-modal-overlay');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        
+        // Reject promise if it was waiting
+        if (this.loginReject) {
+            this.loginReject(new Error('Login cancelled'));
+            this.loginReject = null;
+            this.loginResolve = null;
+        }
+    }
+
+    async handleLogin() {
+        const tokenInput = document.getElementById('admin-token');
+        const errorDiv = document.getElementById('login-error');
+        const submitBtn = document.querySelector('#login-form button[type="submit"]');
+        
+        const token = tokenInput.value.trim();
+        
+        if (!token) {
+            this.showLoginError('Please enter an admin token');
+            return;
+        }
+
+        // Show loading state
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Verifying...';
+        submitBtn.disabled = true;
+
+        try {
+            // Test the token by making an admin API call
+            const testResponse = await fetch('/admin/projects', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Token': token
+                }
+            });
+
+            if (testResponse.ok) {
+                // Token is valid
+                this.adminToken = token;
+                localStorage.setItem('tekno-logger-admin-token', token);
+                this.hideLoginModal();
+                this.updateLogoutButtonVisibility();
+                
+                // Resolve promise if waiting
+                if (this.loginResolve) {
+                    this.loginResolve();
+                    this.loginResolve = null;
+                    this.loginReject = null;
+                }
+            } else {
+                throw new Error('Invalid admin token');
+            }
+        } catch (error) {
+            this.showLoginError('Invalid admin token. Please check and try again.');
+        } finally {
+            // Reset button state
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    }
+
+    showLoginError(message) {
+        const errorDiv = document.getElementById('login-error');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+
+    logout() {
+        this.adminToken = null;
+        localStorage.removeItem('tekno-logger-admin-token');
+        this.updateLogoutButtonVisibility();
+        
+        // Switch to dashboard tab
+        const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+        if (dashboardTab) {
+            dashboardTab.click();
+        }
+    }
+
+    updateLogoutButtonVisibility() {
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.style.display = this.adminToken ? 'inline-flex' : 'none';
         }
     }
 
