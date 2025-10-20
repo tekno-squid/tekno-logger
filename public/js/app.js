@@ -176,6 +176,15 @@ class TeknoLogger {
             });
         });
 
+        // Service selection buttons
+        document.getElementById('select-all-services')?.addEventListener('click', () => {
+            this.selectAllServices(true);
+        });
+
+        document.getElementById('select-none-services')?.addEventListener('click', () => {
+            this.selectAllServices(false);
+        });
+
         // Admin functionality
         document.getElementById('trigger-maintenance')?.addEventListener('click', () => {
             this.triggerMaintenance();
@@ -1023,12 +1032,60 @@ class TeknoLogger {
 
             // Display service status
             this.displayServiceStatus();
+            
+            // Populate service checkboxes
+            this.populateServiceCheckboxes();
 
             console.log('Testing configuration loaded:', this.testingConfig);
         } catch (error) {
             console.error('Failed to load testing data:', error);
             this.showToast('Failed to load testing configuration', 'error');
         }
+    }
+
+    populateServiceCheckboxes() {
+        const container = document.getElementById('service-checkboxes');
+        if (!container) return;
+
+        const services = [
+            {
+                id: 'tekno-enabled',
+                name: '📋 Tekno Logger',
+                enabled: this.testingConfig.teknoLogger.hasTestProject,
+                checked: this.testingConfig.teknoLogger.hasTestProject
+            },
+            {
+                id: 'sentry-enabled',
+                name: '🔍 Sentry',
+                enabled: this.testingConfig.sentry.enabled,
+                checked: this.testingConfig.sentry.enabled
+            },
+            {
+                id: 'betterstack-enabled',
+                name: '📈 BetterStack',
+                enabled: this.testingConfig.betterstack.enabled,
+                checked: this.testingConfig.betterstack.enabled
+            }
+        ];
+
+        container.innerHTML = services.map(service => `
+            <div class="service-checkbox ${service.enabled ? 'enabled' : 'disabled'}">
+                <input 
+                    type="checkbox" 
+                    id="${service.id}" 
+                    ${service.checked ? 'checked' : ''} 
+                    ${!service.enabled ? 'disabled' : ''}
+                >
+                <label for="${service.id}">${service.name}</label>
+            </div>
+        `).join('');
+    }
+
+    selectAllServices(selectAll) {
+        const checkboxes = document.querySelectorAll('#service-checkboxes input[type="checkbox"]:not([disabled])');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll;
+        });
     }
 
     displayServiceStatus() {
@@ -1115,21 +1172,21 @@ class TeknoLogger {
 
         const results = [];
         
-        // Send to enabled services based on environment configuration
-        if (this.testingConfig.teknoLogger.hasTestProject) {
+        // Send to selected services based on checkboxes
+        if (document.getElementById('tekno-enabled')?.checked && this.testingConfig.teknoLogger.hasTestProject) {
             results.push(await this.sendToTeknoLogger(logData));
         }
         
-        if (this.testingConfig.sentry.enabled) {
+        if (document.getElementById('sentry-enabled')?.checked && this.testingConfig.sentry.enabled) {
             results.push(await this.sendToSentry(logData));
         }
         
-        if (this.testingConfig.betterstack.enabled) {
+        if (document.getElementById('betterstack-enabled')?.checked && this.testingConfig.betterstack.enabled) {
             results.push(await this.sendToBetterStack(logData));
         }
 
         if (results.length === 0) {
-            this.showToast('No services are configured for testing', 'warning');
+            this.showToast('Please select at least one service to test', 'warning');
             return;
         }
 
@@ -1155,15 +1212,15 @@ class TeknoLogger {
                 context: { ...baseLog.context, batch_id: i + 1 }
             };
 
-            if (this.testingConfig.teknoLogger.hasTestProject) {
+            if (document.getElementById('tekno-enabled')?.checked && this.testingConfig.teknoLogger.hasTestProject) {
                 results.push(await this.sendToTeknoLogger(logData));
             }
             
-            if (this.testingConfig.sentry.enabled) {
+            if (document.getElementById('sentry-enabled')?.checked && this.testingConfig.sentry.enabled) {
                 results.push(await this.sendToSentry(logData));
             }
             
-            if (this.testingConfig.betterstack.enabled) {
+            if (document.getElementById('betterstack-enabled')?.checked && this.testingConfig.betterstack.enabled) {
                 results.push(await this.sendToBetterStack(logData));
             }
 
@@ -1172,7 +1229,7 @@ class TeknoLogger {
         }
 
         if (results.length === 0) {
-            this.showToast('No services are configured for testing', 'warning');
+            this.showToast('Please select at least one service to test', 'warning');
             return;
         }
 

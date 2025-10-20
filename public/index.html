@@ -293,19 +293,6 @@
 
                         <!-- Test Scenarios -->
                         <div class="testing-section">
-                            <h4>Test Configuration</h4>
-                            <div class="config-info">
-                                <p>Testing services are configured via environment variables:</p>
-                                <ul>
-                                    <li><strong>Tekno Logger:</strong> TEST_TEKNO_PROJECT_SLUG, TEST_TEKNO_API_KEY</li>
-                                    <li><strong>Sentry:</strong> TEST_SENTRY_DSN</li>
-                                    <li><strong>BetterStack:</strong> TEST_BETTERSTACK_TOKEN</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Test Scenarios -->
-                        <div class="testing-section">
                             <h4>Quick Test Scenarios</h4>
                             <div class="scenario-buttons">
                                 <button class="scenario-btn" data-scenario="info">
@@ -376,6 +363,24 @@
   "user_agent": "Test Dashboard"
 }</textarea>
                                 </div>
+
+                                <!-- Service Selection -->
+                                <div class="service-selection">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                        <h5>Send to Services:</h5>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button type="button" id="select-all-services" class="small-button">Select
+                                                All</button>
+                                            <button type="button" id="select-none-services"
+                                                class="small-button">None</button>
+                                        </div>
+                                    </div>
+                                    <div class="service-checkboxes" id="service-checkboxes">
+                                        <!-- Populated by JavaScript -->
+                                    </div>
+                                </div>
+
                                 <div class="form-actions">
                                     <button id="send-test-log" class="primary-button">
                                         📤 Send Test Log
