@@ -79,6 +79,9 @@ class TeknoLogger {
                 case 'projects':
                     await this.loadProjects();
                     break;
+                case 'testing':
+                    await this.loadTesting();
+                    break;
                 case 'admin':
                     await this.loadAdminData();
                     break;
@@ -155,6 +158,22 @@ class TeknoLogger {
         // Theme toggle functionality
         document.getElementById('theme-toggle')?.addEventListener('click', () => {
             this.toggleTheme();
+        });
+
+        // Testing functionality
+        document.getElementById('send-test-log')?.addEventListener('click', () => {
+            this.sendTestLog();
+        });
+
+        document.getElementById('send-batch-logs')?.addEventListener('click', () => {
+            this.sendBatchLogs();
+        });
+
+        // Quick scenario buttons
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.loadScenario(btn.dataset.scenario);
+            });
         });
 
         // Admin functionality
@@ -993,6 +1012,381 @@ class TeknoLogger {
                 }
             }, 5000);
         }
+    }
+
+    // ===== TESTING FUNCTIONALITY =====
+    async loadTesting() {
+        try {
+            // Load projects for Tekno Logger selection
+            const projectsResponse = await this.apiCall('/admin/projects');
+            const projectSelect = document.getElementById('tekno-project');
+            
+            projectSelect.innerHTML = '<option value="">Select Project...</option>';
+            if (projectsResponse.projects) {
+                projectsResponse.projects.forEach(project => {
+                    projectSelect.innerHTML += `<option value="${project.slug}" data-id="${project.id}">${this.escapeHtml(project.name)}</option>`;
+                });
+            }
+
+            // Load saved configuration from localStorage
+            this.loadTestingConfig();
+        } catch (error) {
+            console.error('Failed to load testing data:', error);
+        }
+    }
+
+    loadTestingConfig() {
+        const config = JSON.parse(localStorage.getItem('tekno-testing-config') || '{}');
+        
+        // Restore service configurations
+        document.getElementById('tekno-enabled').checked = config.teknoEnabled !== false;
+        document.getElementById('sentry-enabled').checked = config.sentryEnabled || false;
+        document.getElementById('betterstack-enabled').checked = config.betterstackEnabled || false;
+        
+        if (config.sentryDsn) document.getElementById('sentry-dsn').value = config.sentryDsn;
+        if (config.betterstackToken) document.getElementById('betterstack-token').value = config.betterstackToken;
+        if (config.teknoProject) document.getElementById('tekno-project').value = config.teknoProject;
+    }
+
+    saveTestingConfig() {
+        const config = {
+            teknoEnabled: document.getElementById('tekno-enabled').checked,
+            sentryEnabled: document.getElementById('sentry-enabled').checked,
+            betterstackEnabled: document.getElementById('betterstack-enabled').checked,
+            sentryDsn: document.getElementById('sentry-dsn').value,
+            betterstackToken: document.getElementById('betterstack-token').value,
+            teknoProject: document.getElementById('tekno-project').value
+        };
+        
+        localStorage.setItem('tekno-testing-config', JSON.stringify(config));
+    }
+
+    loadScenario(scenario) {
+        const scenarios = {
+            info: {
+                level: 'info',
+                message: 'User successfully logged in',
+                context: '{\n  "user_id": "user_123",\n  "session_id": "sess_abc",\n  "ip_address": "192.168.1.100"\n}'
+            },
+            warning: {
+                level: 'warn',
+                message: 'High memory usage detected',
+                context: '{\n  "memory_usage": "85%",\n  "threshold": "80%",\n  "process": "web-server"\n}'
+            },
+            error: {
+                level: 'error',
+                message: 'Database connection failed',
+                context: '{\n  "error_code": "ECONNREFUSED",\n  "host": "localhost",\n  "port": 5432,\n  "retry_count": 3\n}'
+            },
+            exception: {
+                level: 'fatal',
+                message: 'Unhandled exception in payment processing',
+                context: '{\n  "exception": "NullPointerException",\n  "stack_trace": "at PaymentProcessor.process(PaymentProcessor.java:42)",\n  "transaction_id": "txn_xyz789"\n}'
+            },
+            performance: {
+                level: 'warn',
+                message: 'Slow API response detected',
+                context: '{\n  "endpoint": "/api/users",\n  "response_time": 2500,\n  "threshold": 1000,\n  "method": "GET"\n}'
+            }
+        };
+
+        const scenarioData = scenarios[scenario];
+        if (scenarioData) {
+            document.getElementById('test-level').value = scenarioData.level;
+            document.getElementById('test-message').value = scenarioData.message;
+            document.getElementById('test-context').value = scenarioData.context;
+        }
+    }
+
+    async sendTestLog() {
+        this.saveTestingConfig();
+        
+        const logData = {
+            level: document.getElementById('test-level').value,
+            source: document.getElementById('test-source').value,
+            env: document.getElementById('test-env').value,
+            message: document.getElementById('test-message').value,
+            context: this.parseJsonSafely(document.getElementById('test-context').value)
+        };
+
+        const results = [];
+        
+        // Send to enabled services
+        if (document.getElementById('tekno-enabled').checked) {
+            results.push(await this.sendToTeknoLogger(logData));
+        }
+        
+        if (document.getElementById('sentry-enabled').checked) {
+            results.push(await this.sendToSentry(logData));
+        }
+        
+        if (document.getElementById('betterstack-enabled').checked) {
+            results.push(await this.sendToBetterStack(logData));
+        }
+
+        this.displayTestResults(results, 1);
+    }
+
+    async sendBatchLogs() {
+        this.saveTestingConfig();
+        
+        const baseLog = {
+            level: document.getElementById('test-level').value,
+            source: document.getElementById('test-source').value,
+            env: document.getElementById('test-env').value,
+            message: document.getElementById('test-message').value,
+            context: this.parseJsonSafely(document.getElementById('test-context').value)
+        };
+
+        const results = [];
+        const batchSize = 10;
+        
+        for (let i = 0; i < batchSize; i++) {
+            const logData = {
+                ...baseLog,
+                message: `${baseLog.message} (batch ${i + 1}/${batchSize})`,
+                context: { ...baseLog.context, batch_id: i + 1 }
+            };
+
+            if (document.getElementById('tekno-enabled').checked) {
+                results.push(await this.sendToTeknoLogger(logData));
+            }
+            
+            if (document.getElementById('sentry-enabled').checked) {
+                results.push(await this.sendToSentry(logData));
+            }
+            
+            if (document.getElementById('betterstack-enabled').checked) {
+                results.push(await this.sendToBetterStack(logData));
+            }
+
+            // Small delay between requests
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        this.displayTestResults(results, batchSize);
+    }
+
+    async sendToTeknoLogger(logData) {
+        const startTime = Date.now();
+        const projectSlug = document.getElementById('tekno-project').value;
+        
+        if (!projectSlug) {
+            return {
+                service: 'Tekno Logger',
+                success: false,
+                error: 'No project selected',
+                responseTime: 0
+            };
+        }
+
+        try {
+            // We need to get the project's API key first
+            const projectsResponse = await this.apiCall('/admin/projects');
+            const project = projectsResponse.projects?.find(p => p.slug === projectSlug);
+            
+            if (!project) {
+                throw new Error('Project not found');
+            }
+
+            // Send log to Tekno Logger using project's endpoint
+            const response = await fetch('/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Project-Key': project.slug // This might need to be the actual API key
+                },
+                body: JSON.stringify({
+                    events: [logData]
+                })
+            });
+
+            return {
+                service: 'Tekno Logger',
+                success: response.ok,
+                status: response.status,
+                responseTime: Date.now() - startTime,
+                error: response.ok ? null : `HTTP ${response.status}`
+            };
+        } catch (error) {
+            return {
+                service: 'Tekno Logger',
+                success: false,
+                error: error.message,
+                responseTime: Date.now() - startTime
+            };
+        }
+    }
+
+    async sendToSentry(logData) {
+        const startTime = Date.now();
+        const dsn = document.getElementById('sentry-dsn').value;
+        
+        if (!dsn) {
+            return {
+                service: 'Sentry',
+                success: false,
+                error: 'No DSN configured',
+                responseTime: 0
+            };
+        }
+
+        try {
+            // Parse Sentry DSN to get the endpoint
+            const dsnMatch = dsn.match(/https:\/\/(.+)@(.+)\/(.+)/);
+            if (!dsnMatch) {
+                throw new Error('Invalid DSN format');
+            }
+
+            const [, key, host, projectId] = dsnMatch;
+            const endpoint = `https://${host}/api/${projectId}/store/`;
+
+            const sentryPayload = {
+                event_id: this.generateUUID(),
+                timestamp: new Date().toISOString(),
+                platform: 'javascript',
+                level: logData.level === 'fatal' ? 'fatal' : logData.level,
+                logger: logData.source,
+                message: {
+                    message: logData.message
+                },
+                environment: logData.env,
+                extra: logData.context,
+                tags: {
+                    source: 'tekno-logger-test'
+                }
+            };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Sentry-Auth': `Sentry sentry_version=7, sentry_key=${key}`
+                },
+                body: JSON.stringify(sentryPayload)
+            });
+
+            return {
+                service: 'Sentry',
+                success: response.ok,
+                status: response.status,
+                responseTime: Date.now() - startTime,
+                error: response.ok ? null : `HTTP ${response.status}`
+            };
+        } catch (error) {
+            return {
+                service: 'Sentry',
+                success: false,
+                error: error.message,
+                responseTime: Date.now() - startTime
+            };
+        }
+    }
+
+    async sendToBetterStack(logData) {
+        const startTime = Date.now();
+        const token = document.getElementById('betterstack-token').value;
+        
+        if (!token) {
+            return {
+                service: 'BetterStack',
+                success: false,
+                error: 'No token configured',
+                responseTime: 0
+            };
+        }
+
+        try {
+            const betterstackPayload = {
+                dt: new Date().toISOString(),
+                level: logData.level.toUpperCase(),
+                message: logData.message,
+                context: logData.context,
+                source: logData.source,
+                environment: logData.env
+            };
+
+            const response = await fetch('https://in.logs.betterstack.com/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(betterstackPayload)
+            });
+
+            return {
+                service: 'BetterStack',
+                success: response.ok,
+                status: response.status,
+                responseTime: Date.now() - startTime,
+                error: response.ok ? null : `HTTP ${response.status}`
+            };
+        } catch (error) {
+            return {
+                service: 'BetterStack',
+                success: false,
+                error: error.message,
+                responseTime: Date.now() - startTime
+            };
+        }
+    }
+
+    displayTestResults(results, logCount) {
+        const container = document.getElementById('test-results');
+        const timestamp = new Date().toLocaleTimeString();
+        
+        const resultHtml = `
+            <div class="test-result">
+                <div class="result-header">
+                    <h5>Test Results - ${timestamp}</h5>
+                    <span class="log-count">${logCount} log${logCount > 1 ? 's' : ''} sent</span>
+                </div>
+                <div class="service-results">
+                    ${results.map(result => `
+                        <div class="service-result ${result.success ? 'success' : 'error'}">
+                            <div class="service-name">${result.service}</div>
+                            <div class="service-status">
+                                ${result.success ? 
+                                    `✅ Success (${result.responseTime}ms)` : 
+                                    `❌ Failed: ${result.error}`
+                                }
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        if (container.querySelector('.results-placeholder')) {
+            container.innerHTML = resultHtml;
+        } else {
+            container.insertAdjacentHTML('afterbegin', resultHtml);
+        }
+
+        // Keep only last 10 results
+        const results_divs = container.querySelectorAll('.test-result');
+        if (results_divs.length > 10) {
+            for (let i = 10; i < results_divs.length; i++) {
+                results_divs[i].remove();
+            }
+        }
+    }
+
+    parseJsonSafely(jsonString) {
+        try {
+            return JSON.parse(jsonString || '{}');
+        } catch (error) {
+            return { parse_error: 'Invalid JSON', original: jsonString };
+        }
+    }
+
+    generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 }
 

@@ -44,6 +44,10 @@
                 <span class="tab-icon">📁</span>
                 Projects
             </button>
+            <button class="tab-button" data-tab="testing">
+                <span class="tab-icon">🧪</span>
+                Testing
+            </button>
             <button class="tab-button" data-tab="admin">
                 <span class="tab-icon">⚙️</span>
                 Admin
@@ -265,6 +269,165 @@
                                 <button type="submit" class="primary-button">Create Project</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testing Tab -->
+            <div id="testing" class="tab-content">
+                <div class="testing-container">
+                    <div class="testing-header">
+                        <h3>Logging Service Testing</h3>
+                        <p>Test and compare different logging services with sample data</p>
+                    </div>
+
+                    <div class="testing-grid">
+                        <!-- Service Configuration -->
+                        <div class="testing-section full-width">
+                            <h4>Service Configuration</h4>
+                            <div class="service-config-grid">
+                                <div class="service-card">
+                                    <div class="service-header">
+                                        <h5>📋 Tekno Logger</h5>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="tekno-enabled" checked>
+                                            <label for="tekno-enabled"></label>
+                                        </div>
+                                    </div>
+                                    <div class="service-config">
+                                        <div class="form-group">
+                                            <label for="tekno-project">Project:</label>
+                                            <select id="tekno-project">
+                                                <option value="">Select Project...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="service-card">
+                                    <div class="service-header">
+                                        <h5>🔍 Sentry</h5>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="sentry-enabled">
+                                            <label for="sentry-enabled"></label>
+                                        </div>
+                                    </div>
+                                    <div class="service-config">
+                                        <div class="form-group">
+                                            <label for="sentry-dsn">DSN:</label>
+                                            <input type="url" id="sentry-dsn" placeholder="https://...@sentry.io/...">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="service-card">
+                                    <div class="service-header">
+                                        <h5>📈 BetterStack</h5>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="betterstack-enabled">
+                                            <label for="betterstack-enabled"></label>
+                                        </div>
+                                    </div>
+                                    <div class="service-config">
+                                        <div class="form-group">
+                                            <label for="betterstack-token">Source Token:</label>
+                                            <input type="text" id="betterstack-token" placeholder="Enter BetterStack source token">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Scenarios -->
+                        <div class="testing-section">
+                            <h4>Quick Test Scenarios</h4>
+                            <div class="scenario-buttons">
+                                <button class="scenario-btn" data-scenario="info">
+                                    <span class="scenario-icon">ℹ️</span>
+                                    <span class="scenario-label">Info Log</span>
+                                </button>
+                                <button class="scenario-btn" data-scenario="warning">
+                                    <span class="scenario-icon">⚠️</span>
+                                    <span class="scenario-label">Warning</span>
+                                </button>
+                                <button class="scenario-btn" data-scenario="error">
+                                    <span class="scenario-icon">❌</span>
+                                    <span class="scenario-label">Error</span>
+                                </button>
+                                <button class="scenario-btn" data-scenario="exception">
+                                    <span class="scenario-icon">💥</span>
+                                    <span class="scenario-label">Exception</span>
+                                </button>
+                                <button class="scenario-btn" data-scenario="performance">
+                                    <span class="scenario-icon">⏱️</span>
+                                    <span class="scenario-label">Performance</span>
+                                </button>
+                                <button class="scenario-btn" data-scenario="custom">
+                                    <span class="scenario-icon">✏️</span>
+                                    <span class="scenario-label">Custom</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Custom Log Builder -->
+                        <div class="testing-section">
+                            <h4>Custom Log Builder</h4>
+                            <div class="log-builder">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="test-level">Level:</label>
+                                        <select id="test-level">
+                                            <option value="info">Info</option>
+                                            <option value="warn">Warning</option>
+                                            <option value="error">Error</option>
+                                            <option value="fatal">Fatal</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="test-source">Source:</label>
+                                        <input type="text" id="test-source" value="test-dashboard" placeholder="Source component">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="test-env">Environment:</label>
+                                        <select id="test-env">
+                                            <option value="development">Development</option>
+                                            <option value="staging">Staging</option>
+                                            <option value="production">Production</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="test-message">Message:</label>
+                                    <input type="text" id="test-message" placeholder="Enter log message..." value="Test log message">
+                                </div>
+                                <div class="form-group">
+                                    <label for="test-context">Context (JSON):</label>
+                                    <textarea id="test-context" placeholder='{"key": "value", "user_id": "123"}'>{
+  "test_type": "manual",
+  "timestamp": "2025-10-20T19:00:00Z",
+  "user_agent": "Test Dashboard"
+}</textarea>
+                                </div>
+                                <div class="form-actions">
+                                    <button id="send-test-log" class="primary-button">
+                                        📤 Send Test Log
+                                    </button>
+                                    <button id="send-batch-logs" class="secondary-button">
+                                        📦 Send Batch (10 logs)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Results -->
+                        <div class="testing-section full-width">
+                            <h4>Test Results</h4>
+                            <div class="results-container" id="test-results">
+                                <div class="results-placeholder">
+                                    <p>Send a test log to see results here</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
