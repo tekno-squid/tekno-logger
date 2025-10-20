@@ -4,11 +4,6 @@ name: Deploy Production Database
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: 'Dry run (show what would be executed without making changes)'
-        required: false
-        type: boolean
-        default: true
       force_migration:
         description: 'Force migration even if database appears populated'
         required: false
@@ -104,20 +99,7 @@ jobs:
             })();
           "
 
-      - name: Run database migration (dry run)
-        if: ${{ github.event.inputs.dry_run }}
-        run: |
-          echo "🔍 DRY RUN MODE - No changes will be made"
-          echo ""
-          echo "Would execute migration with the following configuration:"
-          echo "- Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
-          echo "- User: ${{ env.DB_USER }}" 
-          echo "- Force migration: ${{ github.event.inputs.force_migration }}"
-          echo ""
-          echo "To execute the actual migration, set dry_run: false"
-
       - name: Run database migration
-        if: ${{ !github.event.inputs.dry_run }}
         run: |
           echo "🚀 Executing database migration..."
           echo "Database: ${{ env.DB_HOST }}/${{ env.DB_NAME }}"
@@ -128,7 +110,6 @@ jobs:
           npm run migrate
 
       - name: Verify migration success
-        if: ${{ !github.event.inputs.dry_run }}
         run: |
           echo "✅ Verifying migration was successful..."
           node -e "
@@ -173,17 +154,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
           echo "- **Database**: ${{ env.DB_HOST }}/${{ env.DB_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry Run**: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Force Migration**: ${{ github.event.inputs.force_migration }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-            echo "To execute the actual migration:" >> $GITHUB_STEP_SUMMARY
-            echo "1. Run this workflow again with \`dry_run: false\`" >> $GITHUB_STEP_SUMMARY
-            echo "2. Monitor the deployment in your Render dashboard" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### Deployment Complete" >> $GITHUB_STEP_SUMMARY
-            echo "Your Render service should now start successfully!" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "Your Render service should now start successfully!" >> $GITHUB_STEP_SUMMARY
