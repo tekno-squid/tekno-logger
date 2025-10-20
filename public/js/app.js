@@ -273,7 +273,7 @@ class TeknoLogger {
         }, 100);
     }
 
-    hideLoginModal() {
+    hideLoginModal(cancelled = true) {
         const modal = document.getElementById('login-modal-overlay');
         
         // Remove show class for animation
@@ -285,8 +285,8 @@ class TeknoLogger {
             document.body.style.overflow = '';
         }, 200); // Match CSS transition duration
         
-        // Reject promise if it was waiting
-        if (this.loginReject) {
+        // Only reject promise if it was cancelled, not if login succeeded
+        if (cancelled && this.loginReject) {
             this.loginReject(new Error('Login cancelled'));
             this.loginReject = null;
             this.loginResolve = null;
@@ -324,19 +324,20 @@ class TeknoLogger {
                 // Token is valid
                 this.adminToken = token;
                 localStorage.setItem('tekno-logger-admin-token', token);
-                this.hideLoginModal();
-                this.updateLogoutButtonVisibility();
-                this.showMainContent();
                 
-                // Load dashboard after successful authentication
-                await this.loadDashboard();
-                
-                // Resolve promise if waiting
+                // Resolve promise if waiting BEFORE hiding modal
                 if (this.loginResolve) {
                     this.loginResolve();
                     this.loginResolve = null;
                     this.loginReject = null;
                 }
+                
+                this.hideLoginModal(false); // false = not cancelled, successful login
+                this.updateLogoutButtonVisibility();
+                this.showMainContent();
+                
+                // Load dashboard after successful authentication
+                await this.loadDashboard();
             } else {
                 throw new Error('Invalid admin token');
             }
@@ -528,30 +529,33 @@ class TeknoLogger {
             const container = document.getElementById('recent-errors-list');
             container.innerHTML = '<div class="loading">Loading recent errors...</div>';
             
-            // Get recent error-level logs
-            const response = await this.apiCall('/api/log?' + new URLSearchParams({
-                level: 'error,fatal',
-                limit: '10',
-                sort: 'desc'
-            }));
+            // First check if we have any projects
+            const projectsResponse = await this.apiCall('/admin/projects');
             
-            if (response.logs && response.logs.length > 0) {
-                container.innerHTML = response.logs.map(log => `
-                    <div class="error-item">
-                        <div class="error-header">
-                            <span class="error-level ${log.level}">${log.level.toUpperCase()}</span>
-                            <span class="error-time">${this.formatRelativeTime(new Date(log.ts))}</span>
-                        </div>
-                        <div class="error-message">${this.escapeHtml(log.message)}</div>
-                        <div class="error-source">${this.escapeHtml(log.source)} • ${this.escapeHtml(log.env)}</div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<div class="no-data">No recent errors found</div>';
+            if (!projectsResponse.projects || projectsResponse.projects.length === 0) {
+                container.innerHTML = '<div class="no-data">No projects found. Create a project first to see error logs.</div>';
+                return;
             }
+            
+            // For admin dashboard, show message that individual project logs need to be viewed per-project
+            container.innerHTML = `
+                <div class="info-message">
+                    <h4>📊 Error Monitoring</h4>
+                    <p>You have ${projectsResponse.projects.length} project(s) configured.</p>
+                    <p>To view error logs, use the Search tab to filter logs by project and level.</p>
+                    <div class="project-list">
+                        ${projectsResponse.projects.map(project => `
+                            <div class="project-item">
+                                <strong>${this.escapeHtml(project.name)}</strong> (${this.escapeHtml(project.slug)})
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
         } catch (error) {
             document.getElementById('recent-errors-list').innerHTML = 
-                '<div class="error-state">Failed to load recent errors</div>';
+                '<div class="error-state">Failed to load dashboard data. Please check your admin token.</div>';
             console.error('Failed to load recent errors:', error);
         }
     }
