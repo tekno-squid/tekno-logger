@@ -1,13 +1,9 @@
 // Tekno Logger Dashboard JavaScript
 // Modern ES6+ implementation with comprehensive API integration
 
-const TEKNO_LOGGER_VERSION = '1.2.0'; // Update this for each deployment
-console.log(`🚀 Tekno Logger Dashboard v${TEKNO_LOGGER_VERSION} - Loading...`);
-
 class TeknoLogger {
     constructor() {
-        console.log(`📋 TeknoLogger v${TEKNO_LOGGER_VERSION} - Initializing...`);
-        this.version = TEKNO_LOGGER_VERSION;
+        console.log('📋 TeknoLogger - Initializing...');
         this.currentProject = null;
         this.currentPage = 1;
         this.resultsPerPage = 50;
@@ -37,7 +33,7 @@ class TeknoLogger {
             console.log('📊 Loading dashboard...');
             await this.loadDashboard();
             
-            console.log(`✅ TeknoLogger v${this.version} - Ready!`);
+            console.log('✅ TeknoLogger - Ready!');
         } catch (error) {
             console.error('❌ Initialization failed:', error);
             this.showToast('Failed to initialize dashboard', 'error');
@@ -563,7 +559,7 @@ class TeknoLogger {
     // ===== SEARCH =====
     async loadSearchProjects() {
         try {
-            const projects = await this.apiCall('/api/projects');
+            const projects = await this.apiCall('/admin/projects');
             const select = document.getElementById('search-project');
             
             select.innerHTML = '<option value="">All Projects</option>';
@@ -660,7 +656,7 @@ class TeknoLogger {
             const container = document.getElementById('projects-list');
             container.innerHTML = '<div class="loading">Loading projects...</div>';
             
-            const response = await this.apiCall('/api/projects');
+            const response = await this.apiCall('/admin/projects');
             
             if (response.projects && response.projects.length > 0) {
                 container.innerHTML = response.projects.map(project => `
