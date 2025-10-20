@@ -28,6 +28,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Build migration scripts
+        run: npm run build
+      
+      - name: Verify migration script exists
+        run: |
+          if [ -f "dist/scripts/migrate.js" ]; then
+            echo "✅ Migration script compiled successfully"
+            ls -la dist/scripts/
+          else
+            echo "❌ Migration script not found after build"
+            echo "Contents of dist directory:"
+            find dist -type f -name "*.js" | head -10
+            exit 1
+          fi
+      
       - name: Setup production environment variables
         run: |
           echo "Setting up production environment"
