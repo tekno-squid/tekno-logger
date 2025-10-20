@@ -453,7 +453,7 @@ class TeknoLogger {
                 const dot = statusElement.querySelector('.status-dot');
                 const text = statusElement.querySelector('.status-text');
                 
-                if (health.database?.connected) {
+                if (health.checks?.database?.status === 'healthy') {
                     dot.className = 'status-dot status-healthy';
                     text.textContent = 'Healthy';
                 } else {
@@ -480,7 +480,8 @@ class TeknoLogger {
         try {
             await Promise.all([
                 this.loadServiceStats(),
-                this.loadRecentErrors()
+                this.loadRecentErrors(),
+                this.loadTopFingerprints()
             ]);
         } catch (error) {
             console.error('Failed to load dashboard:', error);
@@ -553,6 +554,28 @@ class TeknoLogger {
             document.getElementById('recent-errors-list').innerHTML = 
                 '<div class="error-state">Failed to load dashboard data. Please check your admin token.</div>';
             console.error('Failed to load recent errors:', error);
+        }
+    }
+
+    async loadTopFingerprints() {
+        try {
+            const container = document.getElementById('top-fingerprints');
+            
+            // For admin dashboard, show message about project-specific nature of fingerprints
+            container.innerHTML = `
+                <div class="info-message">
+                    <h4>📊 Error Fingerprints</h4>
+                    <p>Error fingerprints are tracked per-project to identify recurring issues.</p>
+                    <p>Use the <strong>Search</strong> tab to view logs and identify error patterns within specific projects.</p>
+                    <div class="fingerprint-tip">
+                        <strong>💡 Tip:</strong> Filter by "Error" or "Fatal" level to see critical issues across your projects.
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('top-fingerprints').innerHTML = 
+                '<div class="error-state">Unable to load fingerprints data</div>';
+            console.error('Failed to load fingerprints:', error);
         }
     }
 
