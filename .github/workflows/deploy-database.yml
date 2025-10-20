@@ -49,11 +49,14 @@ jobs:
           echo "DB_USER=${{ secrets.PROD_DB_USER }}" >> $GITHUB_ENV
           echo "DB_PASS=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
           
-          # Required environment variables for migration
+          # Required environment variables for migration (dummy values, not used for DB operations)
           echo "NODE_ENV=production" >> $GITHUB_ENV
           echo "PORT=3000" >> $GITHUB_ENV
-          echo "HMAC_SECRET=dummy-secret-for-migration" >> $GITHUB_ENV
-          echo "ADMIN_TOKEN=dummy-token-for-migration" >> $GITHUB_ENV
+          echo "HMAC_SECRET=dummy-secret-for-migration-32chars-minimum-length" >> $GITHUB_ENV
+          echo "ADMIN_TOKEN=dummy-token-for-migration-32chars-minimum-length" >> $GITHUB_ENV
+          echo "DEFAULT_RETENTION_DAYS=3" >> $GITHUB_ENV
+          echo "MAX_PAYLOAD_BYTES=524288" >> $GITHUB_ENV
+          echo "MAX_EVENTS_PER_POST=250" >> $GITHUB_ENV
 
       - name: Test database connection
         run: |
