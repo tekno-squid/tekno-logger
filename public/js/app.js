@@ -152,12 +152,6 @@ class TeknoLogger {
             this.handleLogin();
         });
 
-        document.getElementById('login-modal-overlay')?.addEventListener('click', (e) => {
-            if (e.target.id === 'login-modal-overlay') {
-                this.hideLoginModal();
-            }
-        });
-
         document.getElementById('logout-btn')?.addEventListener('click', () => {
             this.logout();
         });

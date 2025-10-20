@@ -338,21 +338,16 @@
     <div class="modal-overlay" id="login-modal-overlay">
         <div class="modal login-modal">
             <div class="modal-header">
-                <h2>🔐 Admin Login</h2>
-                <p>Enter your admin token to access management features</p>
+                <h2>Login</h2>
             </div>
             <div class="modal-content">
                 <form id="login-form" class="login-form">
                     <div class="form-group">
-                        <label for="admin-token">Admin Token</label>
-                        <input type="password" id="admin-token" name="adminToken" placeholder="Enter your admin token"
+                        <label for="admin-token">Password</label>
+                        <input type="password" id="admin-token" name="adminToken" placeholder="Enter password"
                             autocomplete="current-password" required>
-                        <div class="form-help">
-                            This is the ADMIN_TOKEN from your environment configuration
-                        </div>
                     </div>
                     <div class="login-actions">
-                        <button type="button" class="btn btn-secondary" id="cancel-login">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="login-submit">
                             <span class="btn-text">Login</span>
                             <span class="btn-loading" style="display: none;">Logging in...</span>
