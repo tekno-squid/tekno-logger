@@ -339,7 +339,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       },
       teknoLogger: {
         enabled: true,
-        endpoint: '/log',
+        endpoint: '/api/log',
         hasTestProject: !!(appConfig.testing.teknoProjectSlug && appConfig.testing.teknoApiKey),
         projectSlug: appConfig.testing.teknoProjectSlug || null
       }

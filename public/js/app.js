@@ -1268,7 +1268,7 @@ class TeknoLogger {
             const hmacSignature = await this.generateHMACSignature(payloadString, hmacSecret);
 
             // Send log to Tekno Logger using proper authentication
-            const response = await fetch('/log', {
+            const response = await fetch('/api/log', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
