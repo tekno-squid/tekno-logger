@@ -1,8 +1,13 @@
 // Tekno Logger Dashboard JavaScript
 // Modern ES6+ implementation with comprehensive API integration
 
+const TEKNO_LOGGER_VERSION = '1.2.0'; // Update this for each deployment
+console.log(`🚀 Tekno Logger Dashboard v${TEKNO_LOGGER_VERSION} - Loading...`);
+
 class TeknoLogger {
     constructor() {
+        console.log(`📋 TeknoLogger v${TEKNO_LOGGER_VERSION} - Initializing...`);
+        this.version = TEKNO_LOGGER_VERSION;
         this.currentProject = null;
         this.currentPage = 1;
         this.resultsPerPage = 50;
@@ -13,14 +18,21 @@ class TeknoLogger {
 
     async init() {
         try {
+            console.log('🔧 Setting up tabs and event listeners...');
             this.setupTabs();
             this.setupEventListeners();
             this.updateLogoutButtonVisibility();
+            
+            console.log('🏥 Checking service health...');
             await this.checkServiceHealth();
+            
+            console.log('📊 Loading dashboard...');
             await this.loadDashboard();
+            
+            console.log(`✅ TeknoLogger v${this.version} - Ready!`);
         } catch (error) {
+            console.error('❌ Initialization failed:', error);
             this.showToast('Failed to initialize dashboard', 'error');
-            console.error('Initialization failed:', error);
         }
     }
 
@@ -883,5 +895,6 @@ class TeknoLogger {
 
 // Initialize the dashboard when the page loads
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🌐 DOM Content Loaded - Starting TeknoLogger...');
     window.logger = new TeknoLogger();
 });

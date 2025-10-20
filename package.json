@@ -1,6 +1,6 @@
 {
   "name": "tekno-logger",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Minimal overflow logger service with MySQL hot store and Discord alerts",
   "main": "src/index.ts",
   "scripts": {
@@ -8,6 +8,8 @@
     "start": "ts-node src/index.ts",
     "build": "tsc --project .",
     "test": "vitest",
+    "sync-version": "node scripts/sync-version.js",
+    "version": "npm run sync-version && git add public/js/app.js",
     "test:coverage": "vitest --coverage",
     "migrate": "node dist/scripts/migrate.js",
     "migrate:dev": "tsx scripts/migrate.ts",
