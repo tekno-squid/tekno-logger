@@ -41,6 +41,8 @@ const configSchema = z.object({
   // Optional Testing Services
   TEST_SENTRY_DSN: z.string().url().optional(),
   TEST_BETTERSTACK_TOKEN: z.string().optional(),
+  TEST_TEKNO_PROJECT_SLUG: z.string().optional(),
+  TEST_TEKNO_API_KEY: z.string().optional(),
 });
 
 // Validate and parse configuration
@@ -127,6 +129,8 @@ export const appConfig = {
   testing: {
     sentryDsn: config.TEST_SENTRY_DSN,
     betterstackToken: config.TEST_BETTERSTACK_TOKEN,
+    teknoProjectSlug: config.TEST_TEKNO_PROJECT_SLUG,
+    teknoApiKey: config.TEST_TEKNO_API_KEY,
   },
 };
 

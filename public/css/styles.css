@@ -1601,11 +1601,11 @@ header {
     transition: transform 0.2s;
 }
 
-.toggle-switch input:checked + label {
+.toggle-switch input:checked+label {
     background-color: var(--primary-color);
 }
 
-.toggle-switch input:checked + label:before {
+.toggle-switch input:checked+label:before {
     transform: translateX(20px);
 }
 
@@ -1741,15 +1741,15 @@ header {
     .testing-grid {
         gap: var(--spacing-md);
     }
-    
+
     .service-config-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .scenario-buttons {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .log-builder .form-row {
         grid-template-columns: 1fr;
     }

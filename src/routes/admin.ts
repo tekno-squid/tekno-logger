@@ -339,13 +339,34 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       },
       teknoLogger: {
         enabled: true,
-        endpoint: '/log'
+        endpoint: '/log',
+        hasTestProject: !!(appConfig.testing.teknoProjectSlug && appConfig.testing.teknoApiKey),
+        projectSlug: appConfig.testing.teknoProjectSlug || null
       }
     };
 
     return {
       success: true,
       services: testingConfig
+    };
+  });
+
+  /**
+   * GET /admin/testing/tekno-credentials - Get Tekno Logger testing credentials
+   */
+  fastify.get('/testing/tekno-credentials', async (request, reply) => {
+    if (!appConfig.testing.teknoProjectSlug || !appConfig.testing.teknoApiKey) {
+      return reply.code(404).send({
+        error: 'Tekno Logger testing credentials not configured',
+        message: 'Set TEST_TEKNO_PROJECT_SLUG and TEST_TEKNO_API_KEY environment variables'
+      });
+    }
+
+    return {
+      success: true,
+      projectSlug: appConfig.testing.teknoProjectSlug,
+      apiKey: appConfig.testing.teknoApiKey,
+      hmacSecret: appConfig.security.hmacSecret
     };
   });
 };

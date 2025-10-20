@@ -251,7 +251,8 @@
                             </div>
                             <div class="form-group">
                                 <label for="project-slug">Project Slug:</label>
-                                <input type="text" id="project-slug" required placeholder="my-app" pattern="[a-z0-9-]+">
+                                <input type="text" id="project-slug" required placeholder="my-app"
+                                    pattern="^[a-z0-9]+(-[a-z0-9]+)*$">
                                 <small>Lowercase letters, numbers, and hyphens only</small>
                             </div>
                             <div class="form-row">
@@ -292,12 +293,14 @@
 
                         <!-- Test Scenarios -->
                         <div class="testing-section">
-                            <h4>Project Selection</h4>
-                            <div class="form-group">
-                                <label for="tekno-project">Tekno Logger Project:</label>
-                                <select id="tekno-project">
-                                    <option value="">Select Project...</option>
-                                </select>
+                            <h4>Test Configuration</h4>
+                            <div class="config-info">
+                                <p>Testing services are configured via environment variables:</p>
+                                <ul>
+                                    <li><strong>Tekno Logger:</strong> TEST_TEKNO_PROJECT_SLUG, TEST_TEKNO_API_KEY</li>
+                                    <li><strong>Sentry:</strong> TEST_SENTRY_DSN</li>
+                                    <li><strong>BetterStack:</strong> TEST_BETTERSTACK_TOKEN</li>
+                                </ul>
                             </div>
                         </div>
 

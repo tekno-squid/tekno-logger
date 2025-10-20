@@ -1051,8 +1051,10 @@ class TeknoLogger {
         const services = [
             {
                 name: '📋 Tekno Logger',
-                status: this.testingConfig.teknoLogger.enabled,
-                description: 'Your local logging service'
+                status: this.testingConfig.teknoLogger.hasTestProject,
+                description: this.testingConfig.teknoLogger.hasTestProject ? 
+                    `Configured via TEST_TEKNO_PROJECT_SLUG and TEST_TEKNO_API_KEY${this.testingConfig.teknoLogger.projectSlug ? ` (Project: ${this.testingConfig.teknoLogger.projectSlug})` : ''}` : 
+                    'Set TEST_TEKNO_PROJECT_SLUG and TEST_TEKNO_API_KEY environment variables'
             },
             {
                 name: '🔍 Sentry',
@@ -1077,20 +1079,6 @@ class TeknoLogger {
                 <p class="service-description">${service.description}</p>
             </div>
         `).join('');
-    }
-
-    loadTestingConfig() {
-        // Load saved project selection from localStorage
-        const savedProject = localStorage.getItem('tekno-testing-project');
-        if (savedProject) {
-            document.getElementById('tekno-project').value = savedProject;
-        }
-    }
-
-    saveTestingConfig() {
-        // Save project selection to localStorage
-        const project = document.getElementById('tekno-project').value;
-        localStorage.setItem('tekno-testing-project', project);
     }
 
     loadScenario(scenario) {
@@ -1142,7 +1130,7 @@ class TeknoLogger {
         const results = [];
         
         // Send to enabled services based on environment configuration
-        if (this.testingConfig.teknoLogger.enabled) {
+        if (this.testingConfig.teknoLogger.hasTestProject) {
             results.push(await this.sendToTeknoLogger(logData));
         }
         
@@ -1181,7 +1169,7 @@ class TeknoLogger {
                 context: { ...baseLog.context, batch_id: i + 1 }
             };
 
-            if (this.testingConfig.teknoLogger.enabled) {
+            if (this.testingConfig.teknoLogger.hasTestProject) {
                 results.push(await this.sendToTeknoLogger(logData));
             }
             
@@ -1207,44 +1195,61 @@ class TeknoLogger {
 
     async sendToTeknoLogger(logData) {
         const startTime = Date.now();
-        const projectSlug = document.getElementById('tekno-project').value;
         
-        if (!projectSlug) {
+        if (!this.testingConfig.teknoLogger.hasTestProject) {
             return {
                 service: 'Tekno Logger',
                 success: false,
-                error: 'No project selected',
+                error: 'Test project not configured (TEST_TEKNO_PROJECT_SLUG and TEST_TEKNO_API_KEY environment variables not set)',
                 responseTime: 0
             };
         }
 
         try {
-            // We need to get the project's API key first
-            const projectsResponse = await this.apiCall('/admin/projects');
-            const project = projectsResponse.projects?.find(p => p.slug === projectSlug);
+            // Get Tekno Logger testing credentials
+            const credentialsResponse = await this.apiCall('/admin/testing/tekno-credentials');
             
-            if (!project) {
-                throw new Error('Project not found');
+            if (!credentialsResponse.success) {
+                throw new Error('Failed to get testing credentials');
             }
 
-            // Send log to Tekno Logger using project's endpoint
+            const { projectSlug, apiKey, hmacSecret } = credentialsResponse;
+
+            // Prepare the log payload
+            const payload = {
+                events: [logData]
+            };
+            const payloadString = JSON.stringify(payload);
+
+            // Generate HMAC signature
+            const hmacSignature = await this.generateHMACSignature(payloadString, hmacSecret);
+
+            // Send log to Tekno Logger using proper authentication
             const response = await fetch('/log', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Project-Key': project.slug // This might need to be the actual API key
+                    'X-Project-Key': apiKey,
+                    'X-Signature': hmacSignature
                 },
-                body: JSON.stringify({
-                    events: [logData]
-                })
+                body: payloadString
             });
+
+            const responseText = await response.text();
+            let responseData;
+            try {
+                responseData = JSON.parse(responseText);
+            } catch {
+                responseData = { message: responseText };
+            }
 
             return {
                 service: 'Tekno Logger',
                 success: response.ok,
                 status: response.status,
                 responseTime: Date.now() - startTime,
-                error: response.ok ? null : `HTTP ${response.status}`
+                error: response.ok ? null : `HTTP ${response.status}: ${responseData.error || responseText}`,
+                response: response.ok ? responseData : null
             };
         } catch (error) {
             return {
@@ -1254,6 +1259,23 @@ class TeknoLogger {
                 responseTime: Date.now() - startTime
             };
         }
+    }
+
+    // Helper method to generate HMAC signature
+    async generateHMACSignature(message, secret) {
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(secret),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        
+        const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+        return Array.from(new Uint8Array(signature))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
     }
 
     async sendToSentry(logData) {
