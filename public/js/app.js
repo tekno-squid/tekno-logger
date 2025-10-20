@@ -1021,27 +1021,13 @@ class TeknoLogger {
             const testingConfigResponse = await this.apiCall('/admin/testing/config');
             this.testingConfig = testingConfigResponse.services;
 
-            // Load projects for Tekno Logger selection
-            const projectsResponse = await this.apiCall('/admin/projects');
-            const projectSelect = document.getElementById('tekno-project');
-            
-            projectSelect.innerHTML = '<option value="">Select Project...</option>';
-            if (projectsResponse.projects) {
-                projectsResponse.projects.forEach(project => {
-                    projectSelect.innerHTML += `<option value="${project.slug}" data-id="${project.id}">${this.escapeHtml(project.name)}</option>`;
-                });
-            }
-
             // Display service status
             this.displayServiceStatus();
 
-            // Load saved project selection from localStorage
-            const savedProject = localStorage.getItem('tekno-testing-project');
-            if (savedProject) {
-                projectSelect.value = savedProject;
-            }
+            console.log('Testing configuration loaded:', this.testingConfig);
         } catch (error) {
             console.error('Failed to load testing data:', error);
+            this.showToast('Failed to load testing configuration', 'error');
         }
     }
 
