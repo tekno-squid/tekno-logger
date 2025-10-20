@@ -37,6 +37,10 @@ const configSchema = z.object({
   // Optional External Services
   DISCORD_WEBHOOK_URL: z.string().url().optional(),
   SENTRY_DSN: z.string().url().optional(),
+  
+  // Optional Testing Services
+  TEST_SENTRY_DSN: z.string().url().optional(),
+  TEST_BETTERSTACK_TOKEN: z.string().optional(),
 });
 
 // Validate and parse configuration
@@ -117,6 +121,12 @@ export const appConfig = {
   external: {
     discordWebhook: config.DISCORD_WEBHOOK_URL,
     sentryDsn: config.SENTRY_DSN,
+  },
+
+  // Testing services
+  testing: {
+    sentryDsn: config.TEST_SENTRY_DSN,
+    betterstackToken: config.TEST_BETTERSTACK_TOKEN,
   },
 };
 

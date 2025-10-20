@@ -282,59 +282,22 @@
                     </div>
 
                     <div class="testing-grid">
-                        <!-- Service Configuration -->
+                        <!-- Service Status -->
                         <div class="testing-section full-width">
-                            <h4>Service Configuration</h4>
-                            <div class="service-config-grid">
-                                <div class="service-card">
-                                    <div class="service-header">
-                                        <h5>📋 Tekno Logger</h5>
-                                        <div class="toggle-switch">
-                                            <input type="checkbox" id="tekno-enabled" checked>
-                                            <label for="tekno-enabled"></label>
-                                        </div>
-                                    </div>
-                                    <div class="service-config">
-                                        <div class="form-group">
-                                            <label for="tekno-project">Project:</label>
-                                            <select id="tekno-project">
-                                                <option value="">Select Project...</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
+                            <h4>Available Services</h4>
+                            <div class="service-status-grid" id="service-status-grid">
+                                <div class="loading">Loading service configuration...</div>
+                            </div>
+                        </div>
 
-                                <div class="service-card">
-                                    <div class="service-header">
-                                        <h5>🔍 Sentry</h5>
-                                        <div class="toggle-switch">
-                                            <input type="checkbox" id="sentry-enabled">
-                                            <label for="sentry-enabled"></label>
-                                        </div>
-                                    </div>
-                                    <div class="service-config">
-                                        <div class="form-group">
-                                            <label for="sentry-dsn">DSN:</label>
-                                            <input type="url" id="sentry-dsn" placeholder="https://...@sentry.io/...">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="service-card">
-                                    <div class="service-header">
-                                        <h5>📈 BetterStack</h5>
-                                        <div class="toggle-switch">
-                                            <input type="checkbox" id="betterstack-enabled">
-                                            <label for="betterstack-enabled"></label>
-                                        </div>
-                                    </div>
-                                    <div class="service-config">
-                                        <div class="form-group">
-                                            <label for="betterstack-token">Source Token:</label>
-                                            <input type="text" id="betterstack-token" placeholder="Enter BetterStack source token">
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Test Scenarios -->
+                        <div class="testing-section">
+                            <h4>Project Selection</h4>
+                            <div class="form-group">
+                                <label for="tekno-project">Tekno Logger Project:</label>
+                                <select id="tekno-project">
+                                    <option value="">Select Project...</option>
+                                </select>
                             </div>
                         </div>
 

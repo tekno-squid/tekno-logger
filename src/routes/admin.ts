@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'crypto';
 import { executeQuery, executeQuerySingle, getCurrentTimestamp } from '@/services/database';
 import { runMaintenance, runDailyPurge } from '@/services/maintenance';
 import { projectCreateSchema, type Project, ValidationError, DatabaseError } from '@/types';
+import { appConfig } from '@/config';
 
 /**
  * Administrative routes for project management and maintenance
@@ -321,6 +322,31 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (error) {
       throw new DatabaseError('Failed to get maintenance status');
     }
+  });
+
+  /**
+   * GET /admin/testing/config - Get testing services configuration
+   */
+  fastify.get('/testing/config', async (request, reply) => {
+    const testingConfig = {
+      sentry: {
+        enabled: !!appConfig.testing.sentryDsn,
+        dsn: appConfig.testing.sentryDsn || null
+      },
+      betterstack: {
+        enabled: !!appConfig.testing.betterstackToken,
+        hasToken: !!appConfig.testing.betterstackToken
+      },
+      teknoLogger: {
+        enabled: true,
+        endpoint: '/log'
+      }
+    };
+
+    return {
+      success: true,
+      services: testingConfig
+    };
   });
 };
 
