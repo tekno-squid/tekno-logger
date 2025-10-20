@@ -41,3 +41,6 @@ playwright-report/
 # Build
 build/
 .cache/
+
+# Misc
+notes/
