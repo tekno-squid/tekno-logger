@@ -845,13 +845,13 @@ class TeknoLogger {
             container.innerHTML = `
                 <div class="status-item">
                     <label>Database:</label>
-                    <span class="status-badge ${health.database?.connected ? 'healthy' : 'unhealthy'}">
-                        ${health.database?.connected ? 'Connected' : 'Disconnected'}
+                    <span class="status-badge ${health.checks?.database?.status === 'healthy' ? 'healthy' : 'unhealthy'}">
+                        ${health.checks?.database?.status === 'healthy' ? 'Connected' : 'Disconnected'}
                     </span>
                 </div>
                 <div class="status-item">
                     <label>Version:</label>
-                    <span>${health.version || 'Unknown'}</span>
+                    <span>${health.service?.version || 'Unknown'}</span>
                 </div>
             `;
 
