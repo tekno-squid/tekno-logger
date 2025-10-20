@@ -89,26 +89,22 @@ async function authenticateProject(request: FastifyRequest, reply: FastifyReply)
     throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
   }
   
-  // Look up project in database
+  // Look up project in database using API key hash
+  const apiKeyHash = createHmac('sha256', '').update(projectKey).digest('hex');
   const project = await executeQuerySingle<{
     id: number;
-    key: string;
+    slug: string;
     name: string;
-    secret: string;
-    is_active: boolean;
-  }>('SELECT id, key, name, secret, is_active FROM projects WHERE key = ? LIMIT 1', [projectKey]);
+    api_key_hash: string;
+  }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]);
   
   if (!project) {
     throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
   }
   
-  if (!project.is_active) {
-    throw new AuthenticationError('Project is disabled', 'PROJECT_DISABLED');
-  }
-  
-  // Verify HMAC signature against raw request body
+  // Verify HMAC signature against raw request body using the HMAC secret from config
   const rawBody = await getRawRequestBody(request);
-  const expectedSignature = calculateHmacSignature(rawBody, project.secret);
+  const expectedSignature = calculateHmacSignature(rawBody, appConfig.security.hmacSecret);
   
   if (!timingSafeEqual(
     Buffer.from(signature, 'hex'),
@@ -120,14 +116,14 @@ async function authenticateProject(request: FastifyRequest, reply: FastifyReply)
   // Authentication successful - attach project to request
   request.project = {
     id: project.id,
-    key: project.key,
+    key: projectKey, // Use the provided API key
     name: project.name,
-    isActive: project.is_active
+    isActive: true // Projects in the table are active (no is_active field)
   };
   
   request.log.info({ 
     projectId: project.id, 
-    projectKey: project.key,
+    projectSlug: project.slug,
     ip: request.clientIp 
   }, 'Project authenticated');
 }
