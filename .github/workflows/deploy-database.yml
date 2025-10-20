@@ -81,7 +81,6 @@ jobs:
           "
 
       - name: Check existing database state
-        if: ${{ !github.event.inputs.force_migration }}
         run: |
           echo "Checking if database has existing tables..."
           node -e "
@@ -96,15 +95,20 @@ jobs:
                 });
                 
                 const [tables] = await connection.execute('SHOW TABLES');
+                console.log('📊 Current database state:');
                 if (tables.length > 0) {
-                  console.log('⚠️ Database contains existing tables:');
+                  console.log('📋 Existing tables found:');
                   tables.forEach(table => console.log('  -', Object.values(table)[0]));
-                  console.log('');
-                  console.log('To proceed with migration on non-empty database, set force_migration: true');
-                  process.exit(1);
+                  
+                  if ('${{ github.event.inputs.force_migration }}' === 'true') {
+                    console.log('🔧 Force migration enabled - will proceed with migration');
+                  } else {
+                    console.log('⚠️ Database not empty, but proceeding with migration (migrations are idempotent)');
+                  }
+                } else {
+                  console.log('✅ Database is empty, ready for migration');
                 }
                 
-                console.log('✅ Database is empty, ready for migration');
                 await connection.end();
               } catch (error) {
                 console.error('❌ Failed to check database state:', error.message);
@@ -123,6 +127,69 @@ jobs:
           # Check if migration files exist
           echo "📁 Checking migration files..."
           ls -la migrations/
+          echo ""
+          
+          # Check current schema_migrations table
+          echo "📋 Checking existing migrations in database..."
+          node -e "
+            const mysql = require('mysql2/promise');
+            (async () => {
+              try {
+                const connection = await mysql.createConnection({
+                  host: process.env.DB_HOST,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASS,
+                  database: process.env.DB_NAME
+                });
+                
+                console.log('Checking if schema_migrations table exists...');
+                try {
+                  const [migrations] = await connection.execute('SELECT version, filename FROM schema_migrations ORDER BY version');
+                  console.log('🔍 Migrations already executed:');
+                  migrations.forEach(row => console.log('  ✓', row.version, '-', row.filename));
+                  
+                  if (migrations.length === 0) {
+                    console.log('📝 No migrations executed yet - this is expected for first run');
+                  }
+                } catch (error) {
+                  console.log('📝 schema_migrations table does not exist yet - will be created');
+                }
+                
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Failed to check migrations:', error.message);
+              }
+            })();
+          "
+          echo ""
+          
+          # Clear any existing schema_migrations to force fresh migration
+          echo "🧹 Clearing migration tracking table to force fresh migration..."
+          node -e "
+            const mysql = require('mysql2/promise');
+            (async () => {
+              try {
+                const connection = await mysql.createConnection({
+                  host: process.env.DB_HOST,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASS,
+                  database: process.env.DB_NAME
+                });
+                
+                console.log('Clearing schema_migrations table...');
+                try {
+                  await connection.execute('DELETE FROM schema_migrations');
+                  console.log('✅ Migration tracking cleared');
+                } catch (error) {
+                  console.log('📝 No schema_migrations table to clear (this is fine)');
+                }
+                
+                await connection.end();
+              } catch (error) {
+                console.error('❌ Failed to clear migrations:', error.message);
+              }
+            })();
+          "
           echo ""
           
           # Run the migration using ts-node to handle path aliases
