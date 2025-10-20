@@ -62,15 +62,23 @@ async function executeMigration(migration: Migration): Promise<void> {
   console.log(`🔄 Executing migration ${migration.version}: ${migration.filename}`);
   
   try {
-    // Split the migration content by semicolons and execute each statement
-    const statements = migration.content
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+    // Parse SQL content properly - split on semicolons but not within parentheses or strings
+    const statements = parseSQLStatements(migration.content);
+    console.log(`📝 Found ${statements.length} SQL statements to execute`);
     
-    for (const statement of statements) {
-      if (statement.trim()) {
-        await executeQuery(statement);
+    // Execute each statement individually
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i]!.trim();
+      if (statement && !statement.startsWith('--')) {
+        console.log(`� Executing statement ${i + 1}/${statements.length}: ${statement.substring(0, 50)}...`);
+        try {
+          await executeQuery(statement);
+          console.log(`✅ Statement ${i + 1} completed`);
+        } catch (error) {
+          console.error(`❌ Statement ${i + 1} failed:`, error);
+          console.error(`📋 Failed SQL:`, statement);
+          throw error;
+        }
       }
     }
     
@@ -85,6 +93,71 @@ async function executeMigration(migration: Migration): Promise<void> {
     console.error(`❌ Migration ${migration.version} failed:`, error);
     throw error;
   }
+}
+
+function parseSQLStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = '';
+  let inString = false;
+  let stringChar = '';
+  let inComment = false;
+  
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i]!;
+    const nextChar = sql[i + 1];
+    
+    // Handle comments
+    if (!inString && char === '-' && nextChar === '-') {
+      inComment = true;
+      i++; // Skip next char
+      continue;
+    }
+    
+    if (inComment) {
+      if (char === '\n') {
+        inComment = false;
+      }
+      continue;
+    }
+    
+    // Handle string literals
+    if (!inString && (char === '"' || char === "'")) {
+      inString = true;
+      stringChar = char;
+      current += char;
+      continue;
+    }
+    
+    if (inString && char === stringChar) {
+      // Check for escaped quotes
+      if (sql[i - 1] !== '\\') {
+        inString = false;
+        stringChar = '';
+      }
+      current += char;
+      continue;
+    }
+    
+    // Handle statement separator
+    if (!inString && char === ';') {
+      const trimmed = current.trim();
+      if (trimmed) {
+        statements.push(trimmed);
+      }
+      current = '';
+      continue;
+    }
+    
+    current += char;
+  }
+  
+  // Add final statement if any
+  const trimmed = current.trim();
+  if (trimmed) {
+    statements.push(trimmed);
+  }
+  
+  return statements;
 }
 
 async function runMigrations(): Promise<void> {

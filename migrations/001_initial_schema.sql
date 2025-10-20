@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS alert_settings (
 );
 
 -- Optional: Fingerprint tracking for advanced alerting
-CREATE TABLE IF NOT EXISTS fingerprints (
+CREATE TABLE IF NOT EXISTS fingerprint_trackers (
     project_id INT NOT NULL,
     fingerprint CHAR(40) NOT NULL,
     last_seen DATETIME(3) NOT NULL,
