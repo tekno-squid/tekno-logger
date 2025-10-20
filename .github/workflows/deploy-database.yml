@@ -28,18 +28,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Build migration scripts
-        run: npm run build
-      
-      - name: Verify migration script exists
+      - name: Verify TypeScript migration script exists
         run: |
-          if [ -f "dist/scripts/migrate.js" ]; then
-            echo "✅ Migration script compiled successfully"
-            ls -la dist/scripts/
+          if [ -f "scripts/migrate.ts" ]; then
+            echo "✅ TypeScript migration script found"
+            echo "✅ Will use ts-node to run with path alias support"
           else
-            echo "❌ Migration script not found after build"
-            echo "Contents of dist directory:"
-            find dist -type f -name "*.js" | head -10
+            echo "❌ Migration script not found"
+            ls -la scripts/
             exit 1
           fi
       
@@ -121,8 +117,8 @@ jobs:
           echo "User: ${{ env.DB_USER }}"
           echo ""
           
-          # Run the migration
-          npm run migrate
+          # Run the migration using ts-node to handle path aliases
+          npx ts-node --require tsconfig-paths/register scripts/migrate.ts
 
       - name: Verify migration success
         run: |
