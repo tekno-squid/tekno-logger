@@ -44,6 +44,7 @@ class TeknoLogger {
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetTab = button.dataset.tab;
+                console.log('🔥 Tab clicked:', targetTab);
                 
                 // Update button states
                 tabButtons.forEach(btn => btn.classList.remove('active'));
@@ -229,7 +230,7 @@ class TeknoLogger {
     }
 
     showLoginModal(resolve = null, reject = null) {
-        console.log('showLoginModal called with resolve:', !!resolve, 'reject:', !!reject);
+        console.log('🔐 showLoginModal called with resolve:', !!resolve, 'reject:', !!reject);
         this.loginResolve = resolve;
         this.loginReject = reject;
         
@@ -237,35 +238,44 @@ class TeknoLogger {
         const form = document.getElementById('login-form');
         const errorDiv = document.getElementById('login-error');
         
-        console.log('Modal element found:', !!modal);
-        console.log('Form element found:', !!form);
-        console.log('Error div found:', !!errorDiv);
+        console.log('🔍 Modal element found:', !!modal);
+        console.log('🔍 Form element found:', !!form);
+        console.log('🔍 Error div found:', !!errorDiv);
         
-        if (!modal) {
-            console.error('Modal element not found!');
+        if (modal) {
+            console.log('📊 Modal current display:', window.getComputedStyle(modal).display);
+            console.log('📊 Modal current opacity:', window.getComputedStyle(modal).opacity);
+            console.log('📊 Modal current classes:', modal.className);
+        } else {
+            console.error('❌ Modal element not found!');
             return;
         }
         
         // Clear previous state
-        form.reset();
-        errorDiv.style.display = 'none';
-        errorDiv.textContent = '';
+        if (form) form.reset();
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
         
         // Show modal with proper CSS transitions
         modal.classList.add('visible');
         document.body.style.overflow = 'hidden';
         
-        console.log('Modal classes after adding visible:', modal.className);
+        console.log('✅ Modal classes after adding visible:', modal.className);
+        console.log('✅ Modal display after visible:', window.getComputedStyle(modal).display);
         
         // Add show class for animation after display is set
         requestAnimationFrame(() => {
             modal.classList.add('show');
-            console.log('Modal classes after adding show:', modal.className);
+            console.log('✅ Modal classes after adding show:', modal.className);
+            console.log('✅ Modal opacity after show:', window.getComputedStyle(modal).opacity);
         });
         
         // Focus on token input
         setTimeout(() => {
-            document.getElementById('admin-token').focus();
+            const tokenInput = document.getElementById('admin-token');
+            if (tokenInput) tokenInput.focus();
         }, 100);
     }
 
