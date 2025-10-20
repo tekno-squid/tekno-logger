@@ -21,6 +21,7 @@ class TeknoLogger {
             console.log('🔧 Setting up tabs and event listeners...');
             this.setupTabs();
             this.setupEventListeners();
+            this.initializeTheme();
             this.updateLogoutButtonVisibility();
             
             // Check authentication before allowing ANY access
@@ -159,6 +160,11 @@ class TeknoLogger {
 
         document.getElementById('logout-btn')?.addEventListener('click', () => {
             this.logout();
+        });
+
+        // Theme toggle functionality
+        document.getElementById('theme-toggle')?.addEventListener('click', () => {
+            this.toggleTheme();
         });
 
         // Admin functionality
@@ -370,6 +376,33 @@ class TeknoLogger {
         if (logoutBtn) {
             logoutBtn.style.display = this.adminToken ? 'inline-flex' : 'none';
         }
+    }
+
+    // ===== THEME MANAGEMENT =====
+    initializeTheme() {
+        // Default to dark mode, but check localStorage for user preference
+        const savedTheme = localStorage.getItem('tekno-logger-theme') || 'dark';
+        this.setTheme(savedTheme);
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        this.setTheme(newTheme);
+    }
+
+    setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('tekno-logger-theme', theme);
+        
+        // Update theme toggle icon
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.textContent = theme === 'dark' ? '🌞' : '🌙';
+            themeToggle.title = `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`;
+        }
+        
+        console.log(`🎨 Theme switched to: ${theme}`);
     }
 
     hideMainContent() {
