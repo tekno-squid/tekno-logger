@@ -120,6 +120,11 @@ jobs:
           echo "User: ${{ env.DB_USER }}"
           echo ""
           
+          # Check if migration files exist
+          echo "📁 Checking migration files..."
+          ls -la migrations/
+          echo ""
+          
           # Run the migration using ts-node to handle path aliases
           npx ts-node --require tsconfig-paths/register scripts/migrate.ts
 
@@ -138,7 +143,7 @@ jobs:
                 });
                 
                 const [tables] = await connection.execute('SHOW TABLES');
-                const expectedTables = ['projects', 'logs', 'project_minute_counters', 'maintenance_log'];
+                const expectedTables = ['projects', 'logs', 'project_minute_counters', 'alert_settings', 'fingerprint_trackers', 'maintenance_state'];
                 
                 console.log('📊 Database tables created:');
                 tables.forEach(table => console.log('  ✓', Object.values(table)[0]));
