@@ -23,6 +23,13 @@ class TeknoLogger {
             this.setupEventListeners();
             this.updateLogoutButtonVisibility();
             
+            // Check authentication before allowing ANY access
+            if (!this.adminToken) {
+                console.log('🔒 No admin token found - requiring authentication...');
+                this.hideMainContent();
+                await this.promptForAdminToken();
+            }
+            
             console.log('🏥 Checking service health...');
             await this.checkServiceHealth();
             
@@ -64,12 +71,7 @@ class TeknoLogger {
         try {
             console.log('Loading tab:', tabName, 'Admin token present:', !!this.adminToken);
             
-            // Check authentication for admin-only tabs
-            if ((tabName === 'projects' || tabName === 'admin') && !this.adminToken) {
-                console.log('Need authentication for tab:', tabName);
-                await this.promptForAdminToken();
-            }
-
+            // Authentication is handled at the app level, not per-tab
             switch (tabName) {
                 case 'dashboard':
                     await this.loadDashboard();
@@ -86,14 +88,6 @@ class TeknoLogger {
             }
         } catch (error) {
             console.log('Error in loadTabData:', error.message);
-            if (error.message === 'Login cancelled') {
-                // User cancelled login, switch back to dashboard
-                const dashboardTab = document.querySelector('[data-tab="dashboard"]');
-                if (dashboardTab) {
-                    dashboardTab.click();
-                }
-                return;
-            }
             this.showToast(`Failed to load ${tabName} data`, 'error');
             console.error(`Failed to load ${tabName}:`, error);
         }
@@ -332,6 +326,10 @@ class TeknoLogger {
                 localStorage.setItem('tekno-logger-admin-token', token);
                 this.hideLoginModal();
                 this.updateLogoutButtonVisibility();
+                this.showMainContent();
+                
+                // Load dashboard after successful authentication
+                await this.loadDashboard();
                 
                 // Resolve promise if waiting
                 if (this.loginResolve) {
@@ -361,18 +359,63 @@ class TeknoLogger {
         this.adminToken = null;
         localStorage.removeItem('tekno-logger-admin-token');
         this.updateLogoutButtonVisibility();
+        this.hideMainContent();
         
-        // Switch to dashboard tab
-        const dashboardTab = document.querySelector('[data-tab="dashboard"]');
-        if (dashboardTab) {
-            dashboardTab.click();
-        }
+        // Show authentication required message
+        this.showAuthenticationRequired();
     }
 
     updateLogoutButtonVisibility() {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
             logoutBtn.style.display = this.adminToken ? 'inline-flex' : 'none';
+        }
+    }
+
+    hideMainContent() {
+        const mainElement = document.querySelector('main');
+        const navElement = document.querySelector('nav.tabs');
+        
+        if (mainElement) mainElement.style.display = 'none';
+        if (navElement) navElement.style.display = 'none';
+        
+        // Show only header with login prompt
+        this.showAuthenticationRequired();
+    }
+
+    showMainContent() {
+        const mainElement = document.querySelector('main');
+        const navElement = document.querySelector('nav.tabs');
+        const authRequired = document.getElementById('auth-required-message');
+        
+        if (mainElement) mainElement.style.display = '';
+        if (navElement) navElement.style.display = '';
+        if (authRequired) authRequired.remove();
+    }
+
+    showAuthenticationRequired() {
+        // Create a message showing authentication is required
+        const existingMessage = document.getElementById('auth-required-message');
+        if (existingMessage) return;
+
+        const message = document.createElement('div');
+        message.id = 'auth-required-message';
+        
+        message.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 24px;">🔒</div>
+            <h2>Authentication Required</h2>
+            <p>
+                This TeknoLogger dashboard requires administrator access. 
+                Please authenticate with your admin token to continue.
+            </p>
+            <button onclick="window.logger.promptForAdminToken()">
+                🔐 Login as Administrator
+            </button>
+        `;
+        
+        const container = document.querySelector('.container');
+        if (container) {
+            container.appendChild(message);
         }
     }
 
