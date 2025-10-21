@@ -1253,7 +1253,7 @@ class TeknoLogger {
             const credentialsResponse = await this.apiCall('/admin/testing/tekno-credentials');
             
             if (!credentialsResponse.success) {
-                throw new Error('Failed to get testing credentials');
+                throw new Error(credentialsResponse.message || 'Failed to get testing credentials');
             }
 
             const { projectSlug, apiKey, hmacSecret } = credentialsResponse;
@@ -1295,10 +1295,19 @@ class TeknoLogger {
                 response: response.ok ? responseData : null
             };
         } catch (error) {
+            let errorMessage = error.message;
+            
+            // Provide helpful error messages for common issues
+            if (error.message.includes('testing credentials not configured')) {
+                errorMessage = 'Environment variables not configured. Set TEST_TEKNO_PROJECT_SLUG and TEST_TEKNO_API_KEY on your server.';
+            } else if (error.message.includes('502') || error.message.includes('Bad Gateway')) {
+                errorMessage = 'Server error - likely missing environment variables. Check Render dashboard settings.';
+            }
+            
             return {
                 service: 'Tekno Logger',
                 success: false,
-                error: error.message,
+                error: errorMessage,
                 responseTime: Date.now() - startTime
             };
         }
