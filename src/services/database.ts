@@ -19,12 +19,16 @@ export async function initializeDatabase(): Promise<void> {
       password: appConfig.database.password,
       connectionLimit: appConfig.database.connectionLimit,
       charset: appConfig.database.charset,
+      // SSL configuration for external database hosts
+      ssl: appConfig.isDevelopment ? undefined : { rejectUnauthorized: false },
       // Additional pool configuration
       queueLimit: 0,
       multipleStatements: false, // Security: prevent SQL injection via multiple statements
       timezone: 'Z', // Use UTC
       dateStrings: false, // Return Date objects, not strings
-      typeCast: (field, next) => {
+      connectTimeout: 30000, // 30 second connection timeout
+      timeout: 30000, // 30 second query timeout
+      typeCast: (field: any, next: any) => {
         // Custom type casting for better TypeScript compatibility
         if (field.type === 'TINY' && field.length === 1) {
           return field.string() === '1'; // Convert TINYINT(1) to boolean
