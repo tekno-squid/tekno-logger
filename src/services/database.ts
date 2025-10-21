@@ -11,23 +11,20 @@ let lastHealthCheck = new Date();
 
 export async function initializeDatabase(): Promise<void> {
   try {
-    // Create connection pool with only MySQL2-compatible settings
-    pool = mysql.createPool({
+    // Create connection pool configuration
+    const poolConfig: mysql.PoolOptions = {
       host: appConfig.database.host,
       database: appConfig.database.database,
       user: appConfig.database.user,
       password: appConfig.database.password,
       connectionLimit: appConfig.database.connectionLimit,
       charset: appConfig.database.charset,
-      // SSL configuration for external database hosts
-      ssl: appConfig.isDevelopment ? undefined : { rejectUnauthorized: false },
       // Additional pool configuration
       queueLimit: 0,
       multipleStatements: false, // Security: prevent SQL injection via multiple statements
       timezone: 'Z', // Use UTC
       dateStrings: false, // Return Date objects, not strings
       connectTimeout: 30000, // 30 second connection timeout
-      timeout: 30000, // 30 second query timeout
       typeCast: (field: any, next: any) => {
         // Custom type casting for better TypeScript compatibility
         if (field.type === 'TINY' && field.length === 1) {
@@ -39,7 +36,15 @@ export async function initializeDatabase(): Promise<void> {
         }
         return next();
       },
-    });
+    };
+
+    // Add SSL configuration for production external database hosts
+    if (!appConfig.isDevelopment) {
+      poolConfig.ssl = { rejectUnauthorized: false };
+    }
+
+    // Create connection pool with MySQL2-compatible settings
+    pool = mysql.createPool(poolConfig);
 
     // Test initial connection
     await testConnection();
