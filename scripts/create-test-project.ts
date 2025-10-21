@@ -1,7 +1,14 @@
 import 'dotenv/config';
 import { createHash } from 'crypto';
-import { initializeDatabase, closeDatabase, executeQuery } from '../src/services/database';
+import { initializeDatabase, closeDatabase, executeQuery, executeInsert } from '../src/services/database';
 import { appConfig } from '../src/config';
+
+interface ProjectRow {
+  id: number;
+  slug: string;
+  name: string;
+  api_key_hash?: string;
+}
 
 /**
  * Create test project for Tekno Logger testing
@@ -29,13 +36,15 @@ async function createTestProject(): Promise<void> {
     console.log(`   API Key Hash: ${apiKeyHash.slice(0, 16)}...`);
 
     // Check if project already exists
-    const existingProject = await executeQuery(
+    const existingProject = await executeQuery<ProjectRow>(
       'SELECT id, slug, name FROM projects WHERE slug = ? OR api_key_hash = ?',
       [appConfig.testing.teknoProjectSlug, apiKeyHash]
     );
 
     if (existingProject.length > 0) {
       console.log('⚠️  Test project already exists, updating...');
+      
+      const project = existingProject[0]!; // Assert that project exists since length > 0
       
       // Update existing project
       await executeQuery(`
@@ -46,13 +55,13 @@ async function createTestProject(): Promise<void> {
         appConfig.testing.teknoProjectSlug,
         apiKeyHash,
         'Tekno Logger Test Project',
-        existingProject[0].id
+        project.id
       ]);
       
       console.log('✅ Test project updated successfully');
     } else {
       // Create new project
-      const result = await executeQuery(`
+      const result = await executeInsert(`
         INSERT INTO projects (slug, api_key_hash, name, retention_days, created_at, updated_at)
         VALUES (?, ?, ?, ?, NOW(), NOW())
       `, [
@@ -63,11 +72,11 @@ async function createTestProject(): Promise<void> {
       ]);
 
       console.log('✅ Test project created successfully');
-      console.log(`   Project ID: ${(result as any).insertId}`);
+      console.log(`   Project ID: ${result.insertId}`);
     }
 
     // Verify project was created/updated correctly
-    const verifyProject = await executeQuery(
+    const verifyProject = await executeQuery<ProjectRow>(
       'SELECT id, slug, name, api_key_hash FROM projects WHERE slug = ?',
       [appConfig.testing.teknoProjectSlug]
     );
