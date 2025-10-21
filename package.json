@@ -15,6 +15,7 @@
     "migrate:dev": "tsx scripts/migrate.ts",
     "seed": "node dist/scripts/seed.js",
     "seed:dev": "tsx scripts/seed.ts",
+    "create-test-project": "tsx scripts/create-test-project.ts",
     "purge": "curl -s -X POST \"http://localhost:${PORT:-3000}/admin/purge\" -H \"X-Admin-Token: ${ADMIN_TOKEN}\"",
     "maintain": "curl -s -X POST \"http://localhost:${PORT:-3000}/admin/maintain\" -H \"X-Admin-Token: ${ADMIN_TOKEN}\"",
     "lint": "eslint src/**/*.ts",
