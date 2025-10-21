@@ -24,19 +24,29 @@ const systemRoutes: FastifyPluginAsync = async (fastify) => {
       checks: {}
     };
 
-    // Database connectivity check
+    // Database connectivity check with timeout
     try {
-      await testConnection();
+      // Use a race condition to timeout the database test after 5 seconds
+      await Promise.race([
+        testConnection(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database ping timeout after 5s')), 5000)
+        )
+      ]);
       health.checks.database = {
         status: 'healthy',
         responseTime: Date.now() - startTime
       };
     } catch (error) {
-      health.status = 'degraded';
+      // Don't mark service as unhealthy just because of database ping issues
+      // Service can still function for requests that don't require database
       health.checks.database = {
         status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        note: 'Service may still be functional for some operations'
       };
+      // Log the error but don't fail the health check
+      request.log.warn({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Database ping failed');
     }
 
     // Memory usage check

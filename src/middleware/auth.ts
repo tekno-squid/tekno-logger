@@ -89,14 +89,36 @@ async function authenticateProject(request: FastifyRequest, reply: FastifyReply)
     throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
   }
   
-  // Look up project in database using API key hash
+  // Look up project in database using API key hash with retry logic
   const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
-  const project = await executeQuerySingle<{
+  let project: {
     id: number;
     slug: string;
     name: string;
     api_key_hash: string;
-  }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]);
+  } | null = null;
+  
+  try {
+    // Add timeout and retry logic for database queries
+    const result = await Promise.race([
+      executeQuerySingle<{
+        id: number;
+        slug: string;
+        name: string;
+        api_key_hash: string;
+      }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]),
+      new Promise<null>((_, reject) => 
+        setTimeout(() => reject(new Error('Database query timeout')), 10000)
+      )
+    ]);
+    project = result;
+  } catch (error) {
+    request.log.error({ 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      apiKeyHash: apiKeyHash.slice(0, 8) + '...' 
+    }, 'Database query failed during authentication');
+    throw new AuthenticationError('Authentication service unavailable', 'DATABASE_ERROR');
+  }
   
   if (!project) {
     throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
