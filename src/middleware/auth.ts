@@ -133,23 +133,15 @@ async function authenticateProject(request: FastifyRequest, reply: FastifyReply)
  * CRITICAL: Must use raw body, not parsed JSON
  */
 async function getRawRequestBody(request: FastifyRequest): Promise<string> {
-  // For POST requests, get the raw body
+  // For POST requests, get the raw body that was captured in preParsing hook
   if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
-    // Fastify stores raw body in request.body for verification
-    if (typeof request.body === 'string') {
-      return request.body;
+    // Use the raw body captured in the preParsing hook
+    if (request.rawBody) {
+      return request.rawBody;
     }
     
-    if (Buffer.isBuffer(request.body)) {
-      return request.body.toString('utf8');
-    }
-    
-    // If request.body is an object, serialize it
+    // Fallback: if rawBody is not available, try to reconstruct from parsed body
     if (request.body && typeof request.body === 'object') {
-      return JSON.stringify(request.body);
-    }
-    
-    if (typeof request.body === 'object' && request.body !== null) {
       return JSON.stringify(request.body);
     }
     

@@ -13,6 +13,7 @@ declare module 'fastify' {
       isActive: boolean;
     };
     clientIp?: string;
+    rawBody?: string; // For HMAC verification
   }
 }
 
@@ -145,7 +146,22 @@ async function registerCorePlugins(app: FastifyInstance): Promise<void> {
  * Register custom middleware
  */
 async function registerMiddleware(app: FastifyInstance): Promise<void> {
-  // Client IP extraction (must be first)
+  // Raw body preservation (must be before JSON parsing)
+  app.addHook('preParsing', async (request, reply, payload) => {
+    // Only capture raw body for API routes that need HMAC verification
+    if (request.url.startsWith('/api/') && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
+      const chunks: Buffer[] = [];
+      payload.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      payload.on('end', () => {
+        request.rawBody = Buffer.concat(chunks).toString('utf8');
+      });
+    }
+    return payload;
+  });
+
+  // Client IP extraction
   app.addHook('onRequest', async (request, reply) => {
     request.clientIp = request.ip || 
                       request.headers['x-forwarded-for']?.toString().split(',')[0] ||
