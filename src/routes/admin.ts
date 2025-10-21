@@ -330,8 +330,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/testing/config', async (request, reply) => {
     const testingConfig = {
       sentry: {
-        enabled: !!appConfig.testing.sentryDsn,
-        dsn: appConfig.testing.sentryDsn || null
+        enabled: !!appConfig.testing.sentryDsn
+        // Never expose DSN in API responses for security
       },
       betterstack: {
         enabled: !!appConfig.testing.betterstackToken,
