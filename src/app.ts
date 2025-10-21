@@ -151,8 +151,10 @@ async function registerMiddleware(app: FastifyInstance): Promise<void> {
     // Only capture raw body for API routes that need HMAC verification
     if (request.url.startsWith('/api/') && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
       const chunks: Buffer[] = [];
-      payload.on('data', (chunk: Buffer) => {
-        chunks.push(chunk);
+      payload.on('data', (chunk: any) => {
+        // Ensure chunk is a Buffer, convert if it's a string
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf8');
+        chunks.push(buffer);
       });
       payload.on('end', () => {
         request.rawBody = Buffer.concat(chunks).toString('utf8');
