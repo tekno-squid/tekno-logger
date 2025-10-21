@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, createHash, timingSafeEqual } from 'crypto';
 import type { FastifyRequest, FastifyReply, FastifyPluginAsync } from 'fastify';
 import { appConfig } from '@/config';
 import { executeQuerySingle } from '@/services/database';
@@ -90,7 +90,7 @@ async function authenticateProject(request: FastifyRequest, reply: FastifyReply)
   }
   
   // Look up project in database using API key hash
-  const apiKeyHash = createHmac('sha256', '').update(projectKey).digest('hex');
+  const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
   const project = await executeQuerySingle<{
     id: number;
     slug: string;
