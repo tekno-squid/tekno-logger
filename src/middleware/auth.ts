@@ -156,6 +156,7 @@ async function authenticateProject(request: FastifyRequest, reply: FastifyReply)
     request.project = {
       id: project.id,
       key: projectKey, // Use the provided API key
+      slug: project.slug,
       name: project.name,
       isActive: true // Projects in the table are active (no is_active field)
     };

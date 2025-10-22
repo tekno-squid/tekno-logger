@@ -12,6 +12,7 @@ declare module 'fastify' {
     project?: {
       id: number;
       key: string;
+      slug: string;
       name: string;
       isActive: boolean;
     };

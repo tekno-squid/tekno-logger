@@ -107,6 +107,7 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
       request.project = {
         id: project.id,
         key: projectKey,
+        slug: project.slug,
         name: project.name,
         isActive: true
       };
@@ -148,7 +149,7 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     }
     
     // Process events for bulk insert
-    const processedEvents = await processLogEvents(events, request.project.id);
+    const processedEvents = await processLogEvents(events, request.project.id, request.project.slug);
     
     // Bulk insert logs
     if (processedEvents.length > 0) {
@@ -232,7 +233,7 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
 /**
  * Process log events for database insertion
  */
-async function processLogEvents(events: LogEvent[], projectId: number): Promise<Array<{
+async function processLogEvents(events: LogEvent[], projectId: number, projectSlug: string): Promise<Array<{
   project_id: number;
   level: string;
   message: string;
@@ -249,7 +250,7 @@ async function processLogEvents(events: LogEvent[], projectId: number): Promise<
     project_id: projectId,
     level: event.level,
     message: event.message.substring(0, 2000), // Truncate long messages
-    source: event.source?.substring(0, 255), // Truncate long sources
+    source: (event.source || projectSlug).substring(0, 255), // Default to project slug, truncate long sources
     context: event.ctx || null,
     fingerprint: calculateLogFingerprint(event),
     day_id: dayId,
@@ -291,7 +292,7 @@ async function bulkInsertLogs(events: any[]): Promise<void> {
   if (events.length === 0) return;
   
   const query = `
-    INSERT INTO logs (project_id, level, message, source, context, fingerprint, day_id, created_at)
+    INSERT INTO logs (project_id, level, message, source, ctx_json, fingerprint, day_id, created_at)
     VALUES 
   `;
   
