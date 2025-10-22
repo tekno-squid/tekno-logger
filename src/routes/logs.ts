@@ -45,57 +45,95 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = Date.now();
     
-    // TEMPORARY: Inline authentication since middleware isn't working
-    const headers = request.headers as any;
-    const projectKey = headers['x-project-key'];
-    const signature = headers['x-signature'];
-    
-    // Validate required headers
-    if (!projectKey) {
-      throw new AuthenticationError('Project key required', 'PROJECT_KEY_MISSING');
+    try {
+      // TEMPORARY: Inline authentication since middleware isn't working
+      const headers = request.headers as any;
+      const projectKey = headers['x-project-key'];
+      const signature = headers['x-signature'];
+      
+      request.log.info({ projectKey: projectKey?.slice(0, 10), hasSignature: !!signature }, 'Auth headers received');
+      
+      // Validate required headers
+      if (!projectKey) {
+        request.log.warn('Missing project key');
+        throw new AuthenticationError('Project key required', 'PROJECT_KEY_MISSING');
+      }
+      
+      if (!signature) {
+        request.log.warn('Missing signature');
+        throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
+      }
+      
+      // Look up project in database using API key hash
+      const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
+      request.log.info({ apiKeyHash: apiKeyHash.slice(0, 8) }, 'Looking up project');
+      
+      const project = await executeQuerySingle<{
+        id: number;
+        slug: string;
+        name: string;
+        api_key_hash: string;
+      }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]);
+      
+      request.log.info({ projectFound: !!project }, 'Project lookup result');
+      
+      if (!project) {
+        request.log.warn({ apiKeyHash: apiKeyHash.slice(0, 8) }, 'Project not found');
+        throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
+      }
+      
+      // Verify HMAC signature against raw request body
+      const rawBody = request.rawBody || JSON.stringify(request.body);
+      request.log.info({ rawBodyLength: rawBody.length, hasRawBody: !!request.rawBody }, 'Verifying HMAC');
+      
+      const expectedSignature = createHmac('sha256', appConfig.security.hmacSecret)
+        .update(rawBody)
+        .digest('hex');
+      
+      request.log.info({ 
+        expectedSig: expectedSignature.slice(0, 8),
+        receivedSig: signature.slice(0, 8)
+      }, 'HMAC comparison');
+      
+      if (!timingSafeEqual(
+        Buffer.from(signature, 'hex'),
+        Buffer.from(expectedSignature, 'hex')
+      )) {
+        request.log.warn('HMAC signature mismatch');
+        throw new AuthenticationError('Invalid signature', 'SIGNATURE_INVALID');
+      }
+      
+      // Set project on request (simulate middleware behavior)
+      request.project = {
+        id: project.id,
+        key: projectKey,
+        name: project.name,
+        isActive: true
+      };
+      
+      request.log.info({ projectId: project.id }, 'Authentication successful');
+    } catch (error) {
+      request.log.error({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorType: error?.constructor?.name
+      }, 'Authentication error in inline auth');
+      
+      // Re-throw authentication errors
+      if (error instanceof AuthenticationError) {
+        throw error;
+      }
+      
+      // Wrap other errors as authentication errors
+      throw new AuthenticationError(
+        error instanceof Error ? error.message : 'Authentication failed',
+        'AUTH_ERROR'
+      );
     }
-    
-    if (!signature) {
-      throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
-    }
-    
-    // Look up project in database using API key hash
-    const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
-    const project = await executeQuerySingle<{
-      id: number;
-      slug: string;
-      name: string;
-      api_key_hash: string;
-    }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]);
-    
-    if (!project) {
-      throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
-    }
-    
-    // Verify HMAC signature against raw request body
-    const rawBody = request.rawBody || JSON.stringify(request.body);
-    const expectedSignature = createHmac('sha256', appConfig.security.hmacSecret)
-      .update(rawBody)
-      .digest('hex');
-    
-    if (!timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expectedSignature, 'hex')
-    )) {
-      throw new AuthenticationError('Invalid signature', 'SIGNATURE_INVALID');
-    }
-    
-    // Set project on request (simulate middleware behavior)
-    request.project = {
-      id: project.id,
-      key: projectKey,
-      name: project.name,
-      isActive: true
-    };
     
     // Continue with normal processing
     // Validate authenticated project
     if (!request.project) {
+      request.log.error('Project not set after authentication');
       throw new ValidationError('Project authentication required', 'PROJECT_REQUIRED');
     }
     
