@@ -4,7 +4,8 @@ import { appConfig } from '@/config';
 import { executeInsert, executeBulkInsert, executeQuerySingle, executeQuery } from '@/services/database';
 import { cleanupExpiredCounters, purgeOldLogs } from '@/services/database';
 import { cleanupExpiredRateLimitCounters } from '@/middleware/rateLimit';
-import { logBatchSchema, type LogEvent, ValidationError } from '@/types';
+import { logBatchSchema, type LogEvent, ValidationError, AuthenticationError } from '@/types';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 // Self-triggering maintenance state
 let lastMaintenanceTime = 0;
@@ -44,6 +45,55 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = Date.now();
     
+    // TEMPORARY: Inline authentication since middleware isn't working
+    const headers = request.headers as any;
+    const projectKey = headers['x-project-key'];
+    const signature = headers['x-signature'];
+    
+    // Validate required headers
+    if (!projectKey) {
+      throw new AuthenticationError('Project key required', 'PROJECT_KEY_MISSING');
+    }
+    
+    if (!signature) {
+      throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
+    }
+    
+    // Look up project in database using API key hash
+    const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
+    const project = await executeQuerySingle<{
+      id: number;
+      slug: string;
+      name: string;
+      api_key_hash: string;
+    }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]);
+    
+    if (!project) {
+      throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
+    }
+    
+    // Verify HMAC signature against raw request body
+    const rawBody = request.rawBody || JSON.stringify(request.body);
+    const expectedSignature = createHmac('sha256', appConfig.security.hmacSecret)
+      .update(rawBody)
+      .digest('hex');
+    
+    if (!timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    )) {
+      throw new AuthenticationError('Invalid signature', 'SIGNATURE_INVALID');
+    }
+    
+    // Set project on request (simulate middleware behavior)
+    request.project = {
+      id: project.id,
+      key: projectKey,
+      name: project.name,
+      isActive: true
+    };
+    
+    // Continue with normal processing
     // Validate authenticated project
     if (!request.project) {
       throw new ValidationError('Project authentication required', 'PROJECT_REQUIRED');
