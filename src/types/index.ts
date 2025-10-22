@@ -5,11 +5,11 @@ import { z } from 'zod';
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 export interface LogEvent {
-  ts: string; // ISO 8601 timestamp
+  ts?: string; // ISO 8601 timestamp, optional (defaults to current time)
   level: LogLevel;
   message: string;
-  source: string; // e.g., "api.database", "worker.processor"  
-  env: string; // e.g., "production", "staging", "development"
+  source?: string; // e.g., "api.database", "worker.processor" - defaults to project slug
+  env?: string; // e.g., "production", "staging", "development" - defaults to "production"
   ctx?: Record<string, unknown>; // JSON context object
   user_id?: string;
   request_id?: string;
@@ -71,11 +71,11 @@ export interface FingerprintTracker {
 export const logLevelSchema = z.enum(['debug', 'info', 'warn', 'error', 'fatal']);
 
 export const logEventSchema = z.object({
-  ts: z.string().datetime(), // ISO 8601 format
+  ts: z.string().datetime().optional(), // ISO 8601 format, defaults to current time
   level: logLevelSchema,
   message: z.string().min(1).max(1024),
-  source: z.string().min(1).max(64),
-  env: z.string().min(1).max(32),
+  source: z.string().min(1).max(64).optional(), // Defaults to project slug
+  env: z.string().min(1).max(32).optional(), // Defaults to 'production'
   ctx: z.record(z.unknown()).optional(),
   user_id: z.string().max(64).optional(),
   request_id: z.string().max(64).optional(),

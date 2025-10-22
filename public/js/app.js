@@ -1235,7 +1235,7 @@ class TeknoLogger {
             source: document.getElementById('test-source').value,
             env: document.getElementById('test-env').value,
             message: document.getElementById('test-message').value,
-            context: this.parseJsonSafely(document.getElementById('test-context').value)
+            ctx: this.parseJsonSafely(document.getElementById('test-context').value)
         };
 
         const results = [];
@@ -1267,7 +1267,7 @@ class TeknoLogger {
             source: document.getElementById('test-source').value,
             env: document.getElementById('test-env').value,
             message: document.getElementById('test-message').value,
-            context: this.parseJsonSafely(document.getElementById('test-context').value)
+            ctx: this.parseJsonSafely(document.getElementById('test-context').value)
         };
 
         const results = [];
@@ -1277,7 +1277,7 @@ class TeknoLogger {
             const logData = {
                 ...baseLog,
                 message: `${baseLog.message} (batch ${i + 1}/${batchSize})`,
-                context: { ...baseLog.context, batch_id: i + 1 }
+                ctx: { ...baseLog.ctx, batch_id: i + 1 }
             };
 
             if (document.getElementById('tekno-enabled')?.checked && this.testingConfig.teknoLogger.hasTestProject) {
