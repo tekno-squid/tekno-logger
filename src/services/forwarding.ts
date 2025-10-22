@@ -112,33 +112,43 @@ export async function forwardToBetterStack(logData: {
   }
 
   try {
-    const betterstackUrl = 'https://in.logs.betterstack.com';
+    // BetterStack Logtail expects source token in the URL as query parameter
+    const betterstackUrl = `https://in.logs.betterstack.com/?source_token=${appConfig.testing.betterstackToken}`;
 
+    // Build payload in BetterStack format
     const payload = {
       dt: new Date().toISOString(),
-      level: logData.level.toUpperCase(),
+      level: logData.level.toLowerCase(), // BetterStack uses lowercase
       message: logData.message,
-      context: logData.ctx || {},
+      // Flatten all context fields to root level
+      ...logData.ctx,
+      // Add metadata fields
       source: logData.source,
-      environment: logData.env,
-      service: 'tekno-logger-test'
+      env: logData.env
     };
 
+    // BetterStack accepts single objects or arrays
     const response = await fetch(betterstackUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${appConfig.testing.betterstackToken}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
+    let responseText = '';
+    try {
+      responseText = await response.text();
+    } catch (e) {
+      // Ignore text parsing errors
+    }
+    
     return {
       service: 'BetterStack',
       success: response.ok,
       status: response.status,
       responseTime: Date.now() - startTime,
-      error: response.ok ? null : `HTTP ${response.status}: ${response.statusText}`,
+      error: response.ok ? null : `HTTP ${response.status}: ${responseText || response.statusText}`,
       response: response.ok ? { message: 'Log sent to BetterStack' } : null
     };
 
