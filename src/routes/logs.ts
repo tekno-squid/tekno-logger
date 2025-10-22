@@ -292,7 +292,7 @@ async function bulkInsertLogs(events: any[]): Promise<void> {
   
   const query = `
     INSERT INTO logs (project_id, level, message, source, context, fingerprint, day_id, created_at)
-    VALUES ?
+    VALUES 
   `;
   
   const values = events.map(event => [
