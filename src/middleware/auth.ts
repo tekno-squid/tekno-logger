@@ -76,78 +76,104 @@ async function authenticateAdmin(request: FastifyRequest, reply: FastifyReply): 
  * Authenticate project requests using project key + HMAC signature
  */
 async function authenticateProject(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const headers = request.headers as AuthHeaders;
-  const projectKey = headers['x-project-key'];
-  const signature = headers['x-signature'];
-  
-  // Validate required headers
-  if (!projectKey) {
-    throw new AuthenticationError('Project key required', 'PROJECT_KEY_MISSING');
-  }
-  
-  if (!signature) {
-    throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
-  }
-  
-  // Look up project in database using API key hash with retry logic
-  const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
-  let project: {
-    id: number;
-    slug: string;
-    name: string;
-    api_key_hash: string;
-  } | null = null;
-  
   try {
-    // Add timeout and retry logic for database queries
-    const result = await Promise.race([
-      executeQuerySingle<{
-        id: number;
-        slug: string;
-        name: string;
-        api_key_hash: string;
-      }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]),
-      new Promise<null>((_, reject) => 
-        setTimeout(() => reject(new Error('Database query timeout')), 10000)
-      )
-    ]);
-    project = result;
+    const headers = request.headers as AuthHeaders;
+    const projectKey = headers['x-project-key'];
+    const signature = headers['x-signature'];
+    
+    // Validate required headers
+    if (!projectKey) {
+      throw new AuthenticationError('Project key required', 'PROJECT_KEY_MISSING');
+    }
+    
+    if (!signature) {
+      throw new AuthenticationError('Signature required', 'SIGNATURE_MISSING');
+    }
+    
+    // Look up project in database using API key hash with retry logic
+    const apiKeyHash = createHash('sha256').update(projectKey).digest('hex');
+    
+    request.log.info({ apiKeyHash: apiKeyHash.slice(0, 8) + '...' }, 'Looking up project by API key hash');
+    
+    let project: {
+      id: number;
+      slug: string;
+      name: string;
+      api_key_hash: string;
+    } | null = null;
+    
+    try {
+      // Add timeout and retry logic for database queries
+      const result = await Promise.race([
+        executeQuerySingle<{
+          id: number;
+          slug: string;
+          name: string;
+          api_key_hash: string;
+        }>('SELECT id, slug, name, api_key_hash FROM projects WHERE api_key_hash = ? LIMIT 1', [apiKeyHash]),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timeout')), 10000)
+        )
+      ]);
+      project = result;
+      
+      request.log.info({ projectFound: !!project, projectId: project?.id }, 'Project lookup result');
+    } catch (error) {
+      request.log.error({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        apiKeyHash: apiKeyHash.slice(0, 8) + '...' 
+      }, 'Database query failed during authentication');
+      throw new AuthenticationError('Authentication service unavailable', 'DATABASE_ERROR');
+    }
+    
+    if (!project) {
+      throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
+    }
+    
+    // Verify HMAC signature against raw request body using the HMAC secret from config
+    const rawBody = await getRawRequestBody(request);
+    const expectedSignature = calculateHmacSignature(rawBody, appConfig.security.hmacSecret);
+    
+    request.log.info({ 
+      rawBodyLength: rawBody.length,
+      expectedSig: expectedSignature.slice(0, 8) + '...',
+      receivedSig: signature.slice(0, 8) + '...'
+    }, 'HMAC signature verification');
+    
+    if (!timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    )) {
+      throw new AuthenticationError('Invalid signature', 'SIGNATURE_INVALID');
+    }
+    
+    // Authentication successful - attach project to request
+    request.project = {
+      id: project.id,
+      key: projectKey, // Use the provided API key
+      name: project.name,
+      isActive: true // Projects in the table are active (no is_active field)
+    };
+    
+    request.log.info({ 
+      projectId: project.id, 
+      projectSlug: project.slug,
+      ip: request.clientIp 
+    }, 'Project authenticated successfully');
   } catch (error) {
+    // Re-throw authentication errors
+    if (error instanceof AuthenticationError) {
+      throw error;
+    }
+    
+    // Log unexpected errors and throw as authentication error
     request.log.error({ 
       error: error instanceof Error ? error.message : 'Unknown error',
-      apiKeyHash: apiKeyHash.slice(0, 8) + '...' 
-    }, 'Database query failed during authentication');
-    throw new AuthenticationError('Authentication service unavailable', 'DATABASE_ERROR');
+      stack: error instanceof Error ? error.stack : undefined
+    }, 'Unexpected error in authentication');
+    
+    throw new AuthenticationError('Authentication failed', 'AUTH_ERROR');
   }
-  
-  if (!project) {
-    throw new AuthenticationError('Invalid project key', 'PROJECT_NOT_FOUND');
-  }
-  
-  // Verify HMAC signature against raw request body using the HMAC secret from config
-  const rawBody = await getRawRequestBody(request);
-  const expectedSignature = calculateHmacSignature(rawBody, appConfig.security.hmacSecret);
-  
-  if (!timingSafeEqual(
-    Buffer.from(signature, 'hex'),
-    Buffer.from(expectedSignature, 'hex')
-  )) {
-    throw new AuthenticationError('Invalid signature', 'SIGNATURE_INVALID');
-  }
-  
-  // Authentication successful - attach project to request
-  request.project = {
-    id: project.id,
-    key: projectKey, // Use the provided API key
-    name: project.name,
-    isActive: true // Projects in the table are active (no is_active field)
-  };
-  
-  request.log.info({ 
-    projectId: project.id, 
-    projectSlug: project.slug,
-    ip: request.clientIp 
-  }, 'Project authenticated');
 }
 
 /**
