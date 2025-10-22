@@ -58,6 +58,21 @@ export async function createApp(options: AppOptions = {}): Promise<FastifyInstan
       project: request.project?.key
     }, 'Request error');
 
+    // Handle custom error types
+    if (error.name === 'AuthenticationError') {
+      return reply.status(401).send({
+        error: error.message,
+        code: (error as any).code || 'AUTHENTICATION_ERROR'
+      });
+    }
+
+    if (error.name === 'ValidationError') {
+      return reply.status(400).send({
+        error: error.message,
+        code: (error as any).code || 'VALIDATION_ERROR'
+      });
+    }
+
     // Determine error response based on error type
     if (error.statusCode === 429) {
       // Rate limit error - preserve headers
