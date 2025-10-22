@@ -22,38 +22,29 @@ interface AuthHeaders {
 export const authPlugin: FastifyPluginAsync = async (fastify) => {
   // Add authentication hooks to specific routes
   fastify.addHook('preHandler', async (request, reply) => {
-    console.log('🔐 Auth middleware called for:', request.method, request.url);
-    
     const isApiRoute = request.url.startsWith('/api/');
     const isAdminRoute = request.url.startsWith('/admin/');
     const isHealthCheck = request.url === '/healthz';
     
-    console.log('🔍 Route checks:', { isApiRoute, isAdminRoute, isHealthCheck });
-    
     // Skip auth for public routes
     if (!isApiRoute && !isAdminRoute) {
-      console.log('⏭️ Skipping auth for public route');
       return;
     }
     
     // Skip auth for health check
     if (isHealthCheck) {
-      console.log('⏭️ Skipping auth for health check');
       return;
     }
     
     // Handle admin authentication
     if (isAdminRoute) {
-      console.log('🔑 Running admin authentication');
       await authenticateAdmin(request, reply);
       return;
     }
     
     // Handle API authentication
     if (isApiRoute) {
-      console.log('🔑 Running API authentication');
       await authenticateProject(request, reply);
-      console.log('✅ API authentication completed, project set:', !!request.project);
       return;
     }
   });
