@@ -2,6 +2,8 @@ import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyReply }
 import { resolve } from 'path';
 import { appConfig } from '@/config';
 import { AuthenticationError, ValidationError } from '@/types';
+import authPlugin from '@/middleware/auth';
+import rateLimitPlugin from '@/middleware/rateLimit';
 
 // Type definitions for our application
 declare module 'fastify' {
@@ -189,8 +191,8 @@ async function registerMiddleware(app: FastifyInstance): Promise<void> {
   });
 
   // Import and register middleware modules
-  await app.register(import('@/middleware/auth'));
-  await app.register(import('@/middleware/rateLimit'));
+  await app.register(authPlugin);
+  await app.register(rateLimitPlugin);
 }
 
 /**
