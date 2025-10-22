@@ -650,9 +650,10 @@ class TeknoLogger {
             if (query) params.append('message', query);
             
             params.append('limit', '50');
-            params.append('sort', 'desc');
+            params.append('offset', '0');
             
-            const response = await this.apiCall(`/api/log?${params.toString()}`);
+            // Use admin search endpoint which doesn't require project auth
+            const response = await this.apiCall(`/admin/logs/search?${params.toString()}`);
             
             this.renderSearchResults(response);
             
@@ -1411,35 +1412,16 @@ class TeknoLogger {
         }
 
         try {
-            // In a real implementation, you would use the actual Sentry DSN
-            // For now, we'll simulate the Sentry API call since we can't expose the DSN to the frontend
-            const sentryPayload = {
-                event_id: this.generateUUID(),
-                timestamp: new Date().toISOString(),
-                platform: 'javascript',
-                level: logData.level === 'fatal' ? 'fatal' : logData.level,
-                logger: logData.source,
-                message: {
-                    message: logData.message
-                },
-                environment: logData.env,
-                extra: logData.context,
-                tags: {
-                    source: 'tekno-logger-test'
-                }
-            };
+            // Use server-side forwarding to avoid exposing DSN
+            const result = await this.apiCall('/admin/testing/forward', {
+                method: 'POST',
+                body: JSON.stringify({
+                    service: 'sentry',
+                    logData: logData
+                })
+            });
 
-            // Simulate API call (replace with actual Sentry SDK in production)
-            await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 100));
-            
-            return {
-                service: 'Sentry',
-                success: true,
-                status: 200,
-                responseTime: Date.now() - startTime,
-                error: null,
-                response: 'Simulated: Event sent to Sentry (DSN configured via environment)'
-            };
+            return result;
         } catch (error) {
             return {
                 service: 'Sentry',
@@ -1463,26 +1445,16 @@ class TeknoLogger {
         }
 
         try {
-            const betterstackPayload = {
-                dt: new Date().toISOString(),
-                level: logData.level.toUpperCase(),
-                message: logData.message,
-                context: logData.context,
-                source: logData.source,
-                environment: logData.env
-            };
+            // Use server-side forwarding to avoid exposing token
+            const result = await this.apiCall('/admin/testing/forward', {
+                method: 'POST',
+                body: JSON.stringify({
+                    service: 'betterstack',
+                    logData: logData
+                })
+            });
 
-            // Simulate API call (replace with actual BetterStack API in production)
-            await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 100));
-
-            return {
-                service: 'BetterStack',
-                success: true,
-                status: 200,
-                responseTime: Date.now() - startTime,
-                error: null,
-                response: 'Simulated: Event sent to BetterStack (Token configured via environment)'
-            };
+            return result;
         } catch (error) {
             return {
                 service: 'BetterStack',

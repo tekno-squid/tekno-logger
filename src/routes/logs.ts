@@ -151,23 +151,9 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     // Process events for bulk insert
     const processedEvents = await processLogEvents(events, request.project.id, request.project.slug);
     
-    request.log.info({ 
-      processedCount: processedEvents.length,
-      sample: processedEvents[0]
-    }, 'Events processed, attempting bulk insert');
-    
     // Bulk insert logs
     if (processedEvents.length > 0) {
-      try {
-        await bulkInsertLogs(processedEvents);
-        request.log.info({ insertedCount: processedEvents.length }, 'Bulk insert successful');
-      } catch (error) {
-        request.log.error({ 
-          error: error instanceof Error ? error.message : 'Unknown',
-          stack: error instanceof Error ? error.stack : undefined
-        }, 'Bulk insert FAILED');
-        throw error;
-      }
+      await bulkInsertLogs(processedEvents);
     }
     
     // Self-triggering maintenance (NON-BLOCKING)

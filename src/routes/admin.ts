@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { createHash, randomBytes } from 'crypto';
 import { executeQuery, executeQuerySingle, getCurrentTimestamp } from '@/services/database';
 import { runMaintenance, runDailyPurge } from '@/services/maintenance';
+import { forwardToSentry, forwardToBetterStack } from '@/services/forwarding';
 import { projectCreateSchema, type Project, ValidationError, DatabaseError } from '@/types';
 import { appConfig } from '@/config';
 
@@ -353,6 +354,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
   /**
    * GET /admin/testing/tekno-credentials - Get Tekno Logger testing credentials
+   * NOTE: This endpoint exposes the HMAC secret for testing purposes only.
+   * It's protected by admin authentication and should only be used in the testing UI.
    */
   fastify.get('/testing/tekno-credentials', async (request, reply) => {
     if (!appConfig.testing.teknoProjectSlug || !appConfig.testing.teknoApiKey) {
@@ -366,8 +369,43 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       success: true,
       projectSlug: appConfig.testing.teknoProjectSlug,
       apiKey: appConfig.testing.teknoApiKey,
-      hmacSecret: appConfig.security.hmacSecret
+      hmacSecret: appConfig.security.hmacSecret // Required for frontend to sign test requests
     };
+  });
+
+  /**
+   * POST /admin/testing/forward - Forward test log to external services
+   */
+  fastify.post('/testing/forward', async (request, reply) => {
+    const { service, logData } = request.body as {
+      service: 'sentry' | 'betterstack';
+      logData: {
+        level: string;
+        message: string;
+        source: string;
+        env: string;
+        ctx?: Record<string, unknown>;
+      };
+    };
+
+    if (!service || !logData) {
+      return reply.code(400).send({
+        error: 'Missing required fields: service and logData'
+      });
+    }
+
+    let result;
+    if (service === 'sentry') {
+      result = await forwardToSentry(logData);
+    } else if (service === 'betterstack') {
+      result = await forwardToBetterStack(logData);
+    } else {
+      return reply.code(400).send({
+        error: 'Invalid service. Must be "sentry" or "betterstack"'
+      });
+    }
+
+    return result;
   });
 
   /**
@@ -408,6 +446,82 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       logs,
       count: logs.length,
       limit
+    };
+  });
+
+  /**
+   * GET /admin/logs/search - Search logs across all projects (admin-level)
+   */
+  fastify.get('/logs/search', async (request, reply) => {
+    const { 
+      project_id, 
+      level, 
+      env, 
+      message, 
+      limit = 50, 
+      offset = 0,
+      since 
+    } = request.query as any;
+    
+    let query = `
+      SELECT 
+        l.id, 
+        l.project_id,
+        p.slug as project_slug,
+        p.name as project_name,
+        l.ts,
+        l.level, 
+        l.message, 
+        l.source, 
+        l.env,
+        l.ctx_json as context,
+        l.user_id,
+        l.request_id,
+        l.tags,
+        l.fingerprint, 
+        l.created_at,
+        l.day_id
+      FROM logs l
+      LEFT JOIN projects p ON l.project_id = p.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    
+    if (project_id) {
+      query += ` AND l.project_id = ?`;
+      params.push(project_id);
+    }
+    
+    if (level) {
+      query += ` AND l.level = ?`;
+      params.push(level);
+    }
+    
+    if (env) {
+      query += ` AND l.env = ?`;
+      params.push(env);
+    }
+    
+    if (message) {
+      query += ` AND l.message LIKE ?`;
+      params.push(`%${message}%`);
+    }
+    
+    if (since) {
+      query += ` AND l.created_at >= ?`;
+      params.push(new Date(since));
+    }
+    
+    query += ` ORDER BY l.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+    
+    const logs = await executeQuery(query, params);
+    
+    return {
+      logs,
+      count: logs.length,
+      limit,
+      offset
     };
   });
 };
