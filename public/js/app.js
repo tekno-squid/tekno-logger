@@ -201,6 +201,10 @@ class TeknoLogger {
         document.getElementById('clear-config-cache')?.addEventListener('click', () => {
             this.clearConfigCache();
         });
+
+        document.getElementById('load-recent-logs')?.addEventListener('click', () => {
+            this.loadRecentLogs();
+        });
     }
 
     // ===== API HELPERS =====
@@ -967,6 +971,70 @@ class TeknoLogger {
 
         } catch (error) {
             this.showToast('Failed to clear cache: ' + error.message, 'error');
+        }
+    }
+
+    async loadRecentLogs() {
+        try {
+            if (!this.adminToken) {
+                await this.promptForAdminToken();
+            }
+
+            const response = await this.apiCall('/admin/logs/recent?limit=20');
+            
+            const container = document.getElementById('logs-debug-section');
+            if (!response.logs || response.logs.length === 0) {
+                container.innerHTML = '<div class="no-data">No logs found in database</div>';
+                return;
+            }
+
+            let html = `
+                <div style="margin-bottom: 1rem;">
+                    <strong>Found ${response.count} recent log(s)</strong>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 8px; text-align: left;">Time</th>
+                                <th style="padding: 8px; text-align: left;">Project</th>
+                                <th style="padding: 8px; text-align: left;">Level</th>
+                                <th style="padding: 8px; text-align: left;">Source</th>
+                                <th style="padding: 8px; text-align: left;">Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            response.logs.forEach(log => {
+                const time = new Date(log.created_at).toLocaleString();
+                const levelColor = {
+                    'error': '#ef4444',
+                    'warn': '#f59e0b',
+                    'info': '#3b82f6',
+                    'fatal': '#991b1b'
+                }[log.level] || '#6b7280';
+
+                html += `
+                    <tr style="border-bottom: 1px solid #e5e5e5;">
+                        <td style="padding: 8px; white-space: nowrap;">${time}</td>
+                        <td style="padding: 8px;">${log.project_slug || log.project_id}</td>
+                        <td style="padding: 8px;">
+                            <span style="color: ${levelColor}; font-weight: 600;">${log.level.toUpperCase()}</span>
+                        </td>
+                        <td style="padding: 8px;">${log.source || '-'}</td>
+                        <td style="padding: 8px; max-width: 400px; overflow: hidden; text-overflow: ellipsis;">${log.message}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+
+        } catch (error) {
+            const container = document.getElementById('logs-debug-section');
+            container.innerHTML = `<div class="error">Failed to load logs: ${error.message}</div>`;
+            this.showToast('Failed to load recent logs: ' + error.message, 'error');
         }
     }
 
