@@ -369,6 +369,47 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       hmacSecret: appConfig.security.hmacSecret
     };
   });
+
+  /**
+   * GET /admin/logs/recent - Get recent logs for debugging
+   */
+  fastify.get('/logs/recent', async (request, reply) => {
+    const { limit = 50, projectId } = request.query as any;
+    
+    let query = `
+      SELECT 
+        l.id, 
+        l.project_id, 
+        p.slug as project_slug,
+        l.level, 
+        l.message, 
+        l.source, 
+        l.env,
+        l.ctx_json as context, 
+        l.fingerprint, 
+        l.created_at,
+        l.day_id
+      FROM logs l
+      LEFT JOIN projects p ON l.project_id = p.id
+    `;
+    const params: any[] = [];
+    
+    if (projectId) {
+      query += ` WHERE l.project_id = ?`;
+      params.push(projectId);
+    }
+    
+    query += ` ORDER BY l.created_at DESC LIMIT ?`;
+    params.push(limit);
+    
+    const logs = await executeQuery(query, params);
+    
+    return {
+      logs,
+      count: logs.length,
+      limit
+    };
+  });
 };
 
 export default adminRoutes;

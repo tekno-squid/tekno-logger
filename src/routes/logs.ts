@@ -200,7 +200,7 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     
     // Build query
     let query = `
-      SELECT id, level, message, source, context, fingerprint, created_at, day_id
+      SELECT id, level, message, source, ctx_json as context, fingerprint, created_at, day_id
       FROM logs 
       WHERE project_id = ?
     `;
