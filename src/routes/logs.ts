@@ -151,9 +151,23 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     // Process events for bulk insert
     const processedEvents = await processLogEvents(events, request.project.id, request.project.slug);
     
+    request.log.info({ 
+      processedCount: processedEvents.length,
+      sample: processedEvents[0]
+    }, 'Events processed, attempting bulk insert');
+    
     // Bulk insert logs
     if (processedEvents.length > 0) {
-      await bulkInsertLogs(processedEvents);
+      try {
+        await bulkInsertLogs(processedEvents);
+        request.log.info({ insertedCount: processedEvents.length }, 'Bulk insert successful');
+      } catch (error) {
+        request.log.error({ 
+          error: error instanceof Error ? error.message : 'Unknown',
+          stack: error instanceof Error ? error.stack : undefined
+        }, 'Bulk insert FAILED');
+        throw error;
+      }
     }
     
     // Self-triggering maintenance (NON-BLOCKING)
@@ -235,10 +249,15 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
  */
 async function processLogEvents(events: LogEvent[], projectId: number, projectSlug: string): Promise<Array<{
   project_id: number;
+  ts: Date;
   level: string;
   message: string;
-  source?: string;
-  context?: Record<string, unknown> | null;
+  source: string;
+  env: string;
+  context: Record<string, unknown> | null;
+  user_id: string | null;
+  request_id: string | null;
+  tags: string | null;
   fingerprint: string;
   day_id: number;
   created_at: Date;
@@ -248,10 +267,15 @@ async function processLogEvents(events: LogEvent[], projectId: number, projectSl
   
   return events.map(event => ({
     project_id: projectId,
+    ts: event.ts ? new Date(event.ts) : currentTime,
     level: event.level,
-    message: event.message.substring(0, 2000), // Truncate long messages
-    source: (event.source || projectSlug).substring(0, 255), // Default to project slug, truncate long sources
+    message: event.message.substring(0, 1024), // Truncate to schema limit
+    source: (event.source || projectSlug).substring(0, 64), // Default to project slug, truncate to schema limit
+    env: (event.env || 'production').substring(0, 32), // Default to production, truncate to schema limit
     context: event.ctx || null,
+    user_id: event.user_id?.substring(0, 64) || null,
+    request_id: event.request_id?.substring(0, 64) || null,
+    tags: event.tags?.substring(0, 128) || null,
     fingerprint: calculateLogFingerprint(event),
     day_id: dayId,
     created_at: currentTime
@@ -292,16 +316,21 @@ async function bulkInsertLogs(events: any[]): Promise<void> {
   if (events.length === 0) return;
   
   const query = `
-    INSERT INTO logs (project_id, level, message, source, ctx_json, fingerprint, day_id, created_at)
+    INSERT INTO logs (project_id, ts, level, message, source, env, ctx_json, user_id, request_id, tags, fingerprint, day_id, created_at)
     VALUES 
   `;
   
   const values = events.map(event => [
     event.project_id,
+    event.ts,
     event.level,
     event.message,
     event.source,
+    event.env,
     event.context ? JSON.stringify(event.context) : null,
+    event.user_id,
+    event.request_id,
+    event.tags,
     event.fingerprint,
     event.day_id,
     event.created_at
