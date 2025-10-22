@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
 import { resolve } from 'path';
 import { appConfig } from '@/config';
+import { AuthenticationError, ValidationError } from '@/types';
 
 // Type definitions for our application
 declare module 'fastify' {
@@ -59,14 +60,14 @@ export async function createApp(options: AppOptions = {}): Promise<FastifyInstan
     }, 'Request error');
 
     // Handle custom error types
-    if (error.name === 'AuthenticationError') {
+    if (error instanceof AuthenticationError) {
       return reply.status(401).send({
         error: error.message,
         code: (error as any).code || 'AUTHENTICATION_ERROR'
       });
     }
 
-    if (error.name === 'ValidationError') {
+    if (error instanceof ValidationError) {
       return reply.status(400).send({
         error: error.message,
         code: (error as any).code || 'VALIDATION_ERROR'
