@@ -137,8 +137,22 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error('Project not set after authentication');
       throw new ValidationError('Project authentication required', 'PROJECT_REQUIRED');
     }
-    
+
     const { events } = request.body as { events: LogEvent[] };
+    
+    // Validate events using Zod schema
+    try {
+      logBatchSchema.parse(events);
+    } catch (error) {
+      request.log.error({ 
+        validationError: error,
+        sampleEvent: events[0]
+      }, 'Event validation failed');
+      throw new ValidationError(
+        `Invalid event data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'INVALID_EVENT_DATA'
+      );
+    }
     
     // Validate payload limits
     if (events.length > appConfig.limits.maxEventsPerPost) {
@@ -151,9 +165,15 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     // Process events for bulk insert
     const processedEvents = await processLogEvents(events, request.project.id, request.project.slug);
     
+    request.log.info({
+      processedCount: processedEvents.length,
+      firstEvent: processedEvents[0]
+    }, 'Events processed');
+    
     // Bulk insert logs
     if (processedEvents.length > 0) {
       await bulkInsertLogs(processedEvents);
+      request.log.info({ insertedCount: processedEvents.length }, 'Bulk insert completed');
     }
     
     // Self-triggering maintenance (NON-BLOCKING)

@@ -186,8 +186,22 @@ export async function executeBulkInsert(
     const finalQuery = query + placeholders;
     const flatParams = values.flat();
     
+    // Temporary debug logging
+    console.log('[DB INSERT]', {
+      queryPrefix: query.substring(0, 150),
+      rowCount: values.length,
+      colCount: values[0]?.length,
+      firstRow: values[0],
+      placeholderSample: placeholders.substring(0, 100)
+    });
+    
     const [result] = await pool.execute(finalQuery, flatParams);
     const insertResult = result as mysql.ResultSetHeader;
+    
+    console.log('[DB INSERT SUCCESS]', {
+      affectedRows: insertResult.affectedRows,
+      insertId: insertResult.insertId
+    });
     
     return {
       affectedRows: insertResult.affectedRows,
@@ -195,6 +209,12 @@ export async function executeBulkInsert(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown database error';
+    console.error('[DB INSERT ERROR]', {
+      error: message,
+      queryPrefix: query.substring(0, 150),
+      rowCount: values.length,
+      firstRow: values[0]
+    });
     throw new DatabaseError(
       `Bulk insert failed: ${message}`,
       query,
