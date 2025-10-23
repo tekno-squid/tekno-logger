@@ -113,8 +113,8 @@ export async function forwardToBetterStack(logData: {
   }
 
   try {
-    // BetterStack Logtail expects source token in the URL as query parameter
-    const betterstackUrl = `https://in.logs.betterstack.com/?source_token=${appConfig.testing.betterstackToken}`;
+    // BetterStack Logtail expects source token in the URL path (not query param or header!)
+    const betterstackUrl = `https://in.logs.betterstack.com/${appConfig.testing.betterstackToken}`;
 
     // Build payload in BetterStack format
     const payload = {
@@ -128,13 +128,14 @@ export async function forwardToBetterStack(logData: {
       env: logData.env
     };
 
-    console.log('[BetterStack] Sending log:', { url: 'in.logs.betterstack.com', level: payload.level, message: payload.message });
+    console.log('[BetterStack] Sending log:', { url: 'in.logs.betterstack.com/{token}', level: payload.level, message: payload.message });
 
-    // BetterStack accepts single objects or arrays
+    // BetterStack accepts single objects or arrays - NO Authorization header!
     const response = await fetch(betterstackUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
+        // NO Authorization header - token is in URL path
       },
       body: JSON.stringify(payload)
     });
