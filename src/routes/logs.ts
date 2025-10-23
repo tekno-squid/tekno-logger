@@ -144,10 +144,6 @@ const logsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       logBatchSchema.parse(events);
     } catch (error) {
-      request.log.error({ 
-        validationError: error,
-        sampleEvent: events[0]
-      }, 'Event validation failed');
       throw new ValidationError(
         `Invalid event data: ${error instanceof Error ? error.message : 'Unknown error'}`,
         'INVALID_EVENT_DATA'
