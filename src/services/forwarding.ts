@@ -103,11 +103,12 @@ export async function forwardToBetterStack(logData: {
   const startTime = Date.now();
 
   if (!appConfig.testing.betterstackToken) {
+    console.log('[BetterStack] Token not configured - check TEST_BETTERSTACK_TOKEN env var');
     return {
       service: 'BetterStack',
       success: false,
       responseTime: 0,
-      error: 'BetterStack token not configured'
+      error: 'BetterStack token not configured (TEST_BETTERSTACK_TOKEN environment variable missing)'
     };
   }
 
@@ -127,6 +128,8 @@ export async function forwardToBetterStack(logData: {
       env: logData.env
     };
 
+    console.log('[BetterStack] Sending log:', { url: 'in.logs.betterstack.com', level: payload.level, message: payload.message });
+
     // BetterStack accepts single objects or arrays
     const response = await fetch(betterstackUrl, {
       method: 'POST',
@@ -143,6 +146,8 @@ export async function forwardToBetterStack(logData: {
       // Ignore text parsing errors
     }
     
+    console.log('[BetterStack] Response:', { status: response.status, ok: response.ok, body: responseText.substring(0, 200) });
+    
     return {
       service: 'BetterStack',
       success: response.ok,
@@ -153,6 +158,7 @@ export async function forwardToBetterStack(logData: {
     };
 
   } catch (error) {
+    console.error('[BetterStack] Error:', error instanceof Error ? error.message : 'Unknown error');
     return {
       service: 'BetterStack',
       success: false,

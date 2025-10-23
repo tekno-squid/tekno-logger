@@ -25,6 +25,11 @@ export async function initializeDatabase(): Promise<void> {
       timezone: 'Z', // Use UTC
       dateStrings: false, // Return Date objects, not strings
       connectTimeout: 30000, // 30 second connection timeout
+      waitForConnections: true, // Wait for available connection instead of erroring
+      enableKeepAlive: true, // Keep connections alive
+      keepAliveInitialDelay: 10000, // 10 seconds
+      maxIdle: 10, // Max idle connections
+      idleTimeout: 60000, // 60 seconds before idle connection timeout
       typeCast: (field: any, next: any) => {
         // Custom type casting for better TypeScript compatibility
         if (field.type === 'TINY' && field.length === 1) {

@@ -35,6 +35,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         }))
       };
     } catch (error) {
+      request.log.error({ error: error instanceof Error ? error.message : 'Unknown' }, 'Failed to fetch projects');
       throw new DatabaseError('Failed to fetch projects');
     }
   });
