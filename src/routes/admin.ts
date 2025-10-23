@@ -474,7 +474,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         l.message, 
         l.source, 
         l.env,
-        l.ctx_json as context,
+        l.ctx_json,
         l.user_id,
         l.request_id,
         l.tags,
