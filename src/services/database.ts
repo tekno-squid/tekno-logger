@@ -45,7 +45,10 @@ export async function initializeDatabase(): Promise<void> {
 
     // Add SSL configuration for production external database hosts
     if (!appConfig.isDevelopment) {
-      poolConfig.ssl = { rejectUnauthorized: false };
+      poolConfig.ssl = { 
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2' // Ensure minimum TLS 1.2
+      };
     }
 
     // Create connection pool with MySQL2-compatible settings
@@ -55,12 +58,12 @@ export async function initializeDatabase(): Promise<void> {
     await testConnection();
     isHealthy = true;
     
-    if (appConfig.isDevelopment) {
-      console.log('✅ Database connection pool initialized');
-      console.log(`📊 Pool config: ${appConfig.database.connectionLimit} max connections`);
-    }
+    console.log('✅ Database connection pool initialized');
+    console.log(`📊 Pool config: ${appConfig.database.connectionLimit} max connections`);
+    console.log(`🔒 SSL: ${!appConfig.isDevelopment ? 'enabled' : 'disabled'}`);
   } catch (error) {
     isHealthy = false;
+    console.error('❌ Database initialization failed:', error instanceof Error ? error.message : 'Unknown error');
     throw new DatabaseError(
       'Failed to initialize database connection pool',
       undefined,
@@ -125,18 +128,46 @@ export async function executeQuery<T = DatabaseRow>(
     throw new DatabaseError('Database pool not initialized', query, 'DB_NOT_INITIALIZED');
   }
 
-  try {
-    const [rows] = await pool.execute(query, params);
-    return rows as T[];
-  } catch (error) {
-    // Enhanced error handling with query context
-    const message = error instanceof Error ? error.message : 'Unknown database error';
-    throw new DatabaseError(
-      `Query execution failed: ${message}`,
-      query,
-      'DB_QUERY_FAILED'
-    );
+  // Retry logic for connection resets
+  const maxRetries = 2;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const [rows] = await pool.execute(query, params);
+      return rows as T[];
+    } catch (error) {
+      lastError = error as Error;
+      const message = error instanceof Error ? error.message : 'Unknown database error';
+      
+      // Only retry on connection-related errors
+      const isConnectionError = message.includes('ECONNRESET') || 
+                               message.includes('PROTOCOL_CONNECTION_LOST') ||
+                               message.includes('ETIMEDOUT') ||
+                               message.includes('Connection lost');
+      
+      if (isConnectionError && attempt < maxRetries) {
+        console.log(`[DB] Connection error on attempt ${attempt + 1}, retrying...`, message);
+        // Wait briefly before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+        continue;
+      }
+      
+      // Not a connection error or out of retries
+      throw new DatabaseError(
+        `Query execution failed: ${message}`,
+        query,
+        'DB_QUERY_FAILED'
+      );
+    }
   }
+
+  // Should never reach here, but TypeScript needs it
+  throw new DatabaseError(
+    `Query execution failed after ${maxRetries + 1} attempts: ${lastError?.message}`,
+    query,
+    'DB_QUERY_FAILED'
+  );
 }
 
 export async function executeQuerySingle<T = DatabaseRow>(
