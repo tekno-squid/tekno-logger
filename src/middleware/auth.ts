@@ -20,12 +20,8 @@ interface AuthHeaders {
  * For admin routes, uses X-Admin-Token instead
  */
 export const authPlugin: FastifyPluginAsync = async (fastify) => {
-  console.log('🔐 Auth plugin registered successfully');
-  
   // Add authentication hooks to specific routes
   fastify.addHook('preHandler', async (request, reply) => {
-    console.log('🔍 Auth middleware hook called for:', request.method, request.url);
-    
     const isApiRoute = request.url.startsWith('/api/');
     const isAdminRoute = request.url.startsWith('/admin/');
     const isHealthCheck = request.url === '/healthz';
@@ -48,7 +44,6 @@ export const authPlugin: FastifyPluginAsync = async (fastify) => {
     
     // Handle API authentication
     if (isApiRoute) {
-      console.log('🚀 Calling authenticateProject for API route');
       await authenticateProject(request, reply);
       return;
     }

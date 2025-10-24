@@ -103,7 +103,6 @@ export async function forwardToBetterStack(logData: {
   const startTime = Date.now();
 
   if (!appConfig.testing.betterstackToken || !appConfig.testing.betterstackEndpoint) {
-    console.log('[BetterStack] Token or endpoint not configured - check TEST_BETTERSTACK_TOKEN and TEST_BETTERSTACK_ENDPOINT env vars');
     return {
       service: 'BetterStack',
       success: false,
@@ -128,12 +127,6 @@ export async function forwardToBetterStack(logData: {
       env: logData.env
     };
 
-    console.log('[BetterStack] Sending log:', { 
-      endpoint: betterstackUrl, 
-      level: payload.level, 
-      message: payload.message 
-    });
-
     // BetterStack uses Bearer token authentication in header
     const response = await fetch(betterstackUrl, {
       method: 'POST',
@@ -151,8 +144,6 @@ export async function forwardToBetterStack(logData: {
       // Ignore text parsing errors
     }
     
-    console.log('[BetterStack] Response:', { status: response.status, ok: response.ok, body: responseText.substring(0, 200) });
-    
     return {
       service: 'BetterStack',
       success: response.ok,
@@ -163,7 +154,6 @@ export async function forwardToBetterStack(logData: {
     };
 
   } catch (error) {
-    console.error('[BetterStack] Error:', error instanceof Error ? error.message : 'Unknown error');
     return {
       service: 'BetterStack',
       success: false,

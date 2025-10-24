@@ -58,9 +58,11 @@ export async function initializeDatabase(): Promise<void> {
     await testConnection();
     isHealthy = true;
     
-    console.log('✅ Database connection pool initialized');
-    console.log(`📊 Pool config: ${appConfig.database.connectionLimit} max connections`);
-    console.log(`🔒 SSL: ${!appConfig.isDevelopment ? 'enabled' : 'disabled'}`);
+    if (appConfig.isDevelopment) {
+      console.log('✅ Database connection pool initialized');
+      console.log(`📊 Pool config: ${appConfig.database.connectionLimit} max connections`);
+      console.log(`🔒 SSL: ${!appConfig.isDevelopment ? 'enabled' : 'disabled'}`);
+    }
   } catch (error) {
     isHealthy = false;
     console.error('❌ Database initialization failed:', error instanceof Error ? error.message : 'Unknown error');
