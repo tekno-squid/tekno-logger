@@ -102,25 +102,25 @@ export async function forwardToBetterStack(logData: {
 }): Promise<ForwardingResult> {
   const startTime = Date.now();
 
-  if (!appConfig.testing.betterstackToken) {
-    console.log('[BetterStack] Token not configured - check TEST_BETTERSTACK_TOKEN env var');
+  if (!appConfig.testing.betterstackToken || !appConfig.testing.betterstackEndpoint) {
+    console.log('[BetterStack] Token or endpoint not configured - check TEST_BETTERSTACK_TOKEN and TEST_BETTERSTACK_ENDPOINT env vars');
     return {
       service: 'BetterStack',
       success: false,
       responseTime: 0,
-      error: 'BetterStack token not configured (TEST_BETTERSTACK_TOKEN environment variable missing)'
+      error: 'BetterStack not configured (TEST_BETTERSTACK_TOKEN and TEST_BETTERSTACK_ENDPOINT environment variables required)'
     };
   }
 
   try {
-    // BetterStack Logtail expects source token in the URL path (not query param or header!)
-    const betterstackUrl = `https://in.logs.betterstack.com/${appConfig.testing.betterstackToken}`;
+    // BetterStack endpoint varies by region - use the provided endpoint
+    const betterstackUrl = appConfig.testing.betterstackEndpoint;
 
     // Build payload in BetterStack format
     const payload = {
-      dt: new Date().toISOString(),
-      level: logData.level.toLowerCase(), // BetterStack uses lowercase
+      dt: new Date().toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC'), // Format: "2025-10-24 12:34:56 UTC"
       message: logData.message,
+      level: logData.level.toLowerCase(), // BetterStack uses lowercase
       // Flatten all context fields to root level
       ...logData.ctx,
       // Add metadata fields
@@ -128,14 +128,18 @@ export async function forwardToBetterStack(logData: {
       env: logData.env
     };
 
-    console.log('[BetterStack] Sending log:', { url: 'in.logs.betterstack.com/{token}', level: payload.level, message: payload.message });
+    console.log('[BetterStack] Sending log:', { 
+      endpoint: betterstackUrl, 
+      level: payload.level, 
+      message: payload.message 
+    });
 
-    // BetterStack accepts single objects or arrays - NO Authorization header!
+    // BetterStack uses Bearer token authentication in header
     const response = await fetch(betterstackUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
-        // NO Authorization header - token is in URL path
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${appConfig.testing.betterstackToken}`
       },
       body: JSON.stringify(payload)
     });

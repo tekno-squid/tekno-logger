@@ -336,8 +336,9 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         // Never expose DSN in API responses for security
       },
       betterstack: {
-        enabled: !!appConfig.testing.betterstackToken,
-        hasToken: !!appConfig.testing.betterstackToken
+        enabled: !!(appConfig.testing.betterstackToken && appConfig.testing.betterstackEndpoint),
+        hasToken: !!appConfig.testing.betterstackToken,
+        hasEndpoint: !!appConfig.testing.betterstackEndpoint
       },
       teknoLogger: {
         enabled: true,
