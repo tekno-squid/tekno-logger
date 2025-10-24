@@ -672,18 +672,32 @@ class TeknoLogger {
         if (response.logs && response.logs.length > 0) {
             countElement.textContent = `Found ${response.logs.length} results`;
             
-            container.innerHTML = response.logs.map(log => `
-                <div class="log-item">
-                    <div class="log-header">
-                        <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
-                        <span class="log-time">${new Date(log.ts).toLocaleString()}</span>
-                        <span class="log-source">${this.escapeHtml(log.source)}</span>
-                        <span class="log-env">${this.escapeHtml(log.env)}</span>
+            container.innerHTML = response.logs.map(log => {
+                // ctx_json might be already parsed by MySQL or still a string
+                let contextDisplay = '';
+                if (log.ctx_json) {
+                    try {
+                        const ctx = typeof log.ctx_json === 'string' ? JSON.parse(log.ctx_json) : log.ctx_json;
+                        contextDisplay = `<div class="log-context"><pre>${this.escapeHtml(JSON.stringify(ctx, null, 2))}</pre></div>`;
+                    } catch (e) {
+                        // If parsing fails, show raw value
+                        contextDisplay = `<div class="log-context"><pre>${this.escapeHtml(String(log.ctx_json))}</pre></div>`;
+                    }
+                }
+                
+                return `
+                    <div class="log-item">
+                        <div class="log-header">
+                            <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
+                            <span class="log-time">${new Date(log.ts).toLocaleString()}</span>
+                            <span class="log-source">${this.escapeHtml(log.source)}</span>
+                            <span class="log-env">${this.escapeHtml(log.env)}</span>
+                        </div>
+                        <div class="log-message">${this.escapeHtml(log.message)}</div>
+                        ${contextDisplay}
                     </div>
-                    <div class="log-message">${this.escapeHtml(log.message)}</div>
-                    ${log.ctx_json ? `<div class="log-context"><pre>${this.escapeHtml(JSON.stringify(JSON.parse(log.ctx_json), null, 2))}</pre></div>` : ''}
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             countElement.textContent = 'No results found';
             container.innerHTML = '<div class="no-data">No logs match your search criteria</div>';
